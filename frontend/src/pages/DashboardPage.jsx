@@ -80,7 +80,7 @@ export default function DashboardPage() {
                 Dashboard Bhumi Satya
               </h1>
               <p className="admin-page-header__description">
-                Ringkasan data aset dan Digital Twin.
+                Ringkasan Digital Twin dan penyewaan.
               </p>
             </div>
           </div>

@@ -1,5 +1,14 @@
 export const changelogEntries = [
   {
+    id: "reactivate-rental-service",
+    date: "2026-08-07",
+    type: "fitur",
+    title: "Mengaktifkan kembali layanan penyewaan",
+    summary:
+      "Menu penyewaan, portal masyarakat, pendaftaran akun publik, informasi sewa, serta pengajuan dan pengelolaan sewa kini tersedia kembali.",
+    area: "Penyewaan",
+  },
+  {
     id: "configurable-production-database-ssl",
     date: "2026-08-07",
     type: "perbaikan",

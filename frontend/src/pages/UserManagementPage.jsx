@@ -436,7 +436,7 @@ export default function UserManagementPage() {
                   {formData.role === ROLES.PENGELOLA_ASET && (
                     <>
                       <li>• CRUD master data dan administratif</li>
-                      <li>• Kelola data aset sesuai kewenangan</li>
+                      <li>• Kelola sewa dan permintaan aset</li>
                     </>
                   )}
                   {formData.role === ROLES.VERIFIKATOR_ASET && (

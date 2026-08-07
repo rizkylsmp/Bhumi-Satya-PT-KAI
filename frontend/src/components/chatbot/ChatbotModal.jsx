@@ -12,7 +12,7 @@ const SESSION_KEY = "bhumi_satya_chatbot_session";
 const FALLBACK_SUGGESTIONS = [
   "Apa itu Bhumi Satya?",
   "Cara menggunakan peta?",
-  "Bagaimana melihat data 3D?",
+  "Bagaimana proses sewa aset?",
 ];
 
 const createSessionId = () => {
@@ -29,7 +29,7 @@ const createSessionId = () => {
 const welcomeMessage = {
   id: "welcome",
   role: "bot",
-  text: "Halo! Saya asisten Bhumi Satya. Tanyakan seputar aset, peta, akun, atau data 2D dan 3D.",
+  text: "Halo! Saya asisten Bhumi Satya. Tanyakan seputar aset, peta, akun, atau penyewaan.",
 };
 
 const ChatbotModal = ({ isOpen, onClose }) => {

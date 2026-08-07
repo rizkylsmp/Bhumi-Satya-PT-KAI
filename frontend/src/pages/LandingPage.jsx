@@ -827,9 +827,9 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300 md:text-lg">
-              Bhumi Satya menghadirkan Digital Twin dalam mode 2D dan 3D untuk
-              memahami kondisi ruang, lokasi aset, dan informasi pertanahan
-              secara terpadu.
+              Bhumi Satya menghadirkan Digital Twin 2D dan 3D untuk memahami
+              kondisi ruang, sekaligus layanan penyewaan untuk menemukan objek
+              tersedia dan mengajukan pemanfaatan secara online.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button
@@ -887,11 +887,11 @@ export default function LandingPage() {
                   Satu Platform Terintegrasi
                 </p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
-                  Digital Twin pertanahan terpadu
+                  Digital Twin & layanan penyewaan
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  Pahami kondisi ruang, bidang tanah, dan bangunan secara visual
-                  melalui data 2D dan 3D yang saling terhubung.
+                  Pahami kondisi ruang secara visual, lalu lanjutkan ke layanan
+                  penyewaan melalui alur yang saling terhubung.
                 </p>
               </div>
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-200">
