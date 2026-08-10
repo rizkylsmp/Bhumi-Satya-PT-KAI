@@ -2855,6 +2855,9 @@ const MapDisplayBPN = ({
   const disableAsset3dMode = () => {
     const keepExternalPanelOpen = Boolean(asset3dPanelContainer);
     clearAnalysis();
+    if (autoFitInitial2d) {
+      hasAutoFitInitial2dRef.current = false;
+    }
     setIsAsset3dMode(false);
     setIsAsset3dPanelOpen(keepExternalPanelOpen);
     onAsset3dModeChange?.(false);

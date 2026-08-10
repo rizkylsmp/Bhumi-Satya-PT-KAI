@@ -14,7 +14,7 @@ export const changelogEntries = [
     type: "peningkatan",
     title: "Memusatkan peta landing pada data 2D",
     summary:
-      "Tampilan awal peta 2D pada landing page kini otomatis menyesuaikan area seluruh bidang yang tersedia, dengan titik aset sebagai fallback.",
+      "Tampilan awal dan perpindahan kembali dari mode 3D pada landing page kini otomatis menyesuaikan area seluruh bidang 2D yang tersedia, dengan titik aset sebagai fallback.",
     area: "Digital Twin",
   },
   {
