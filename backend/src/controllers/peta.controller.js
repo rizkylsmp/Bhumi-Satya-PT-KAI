@@ -4,6 +4,7 @@ import {
   Aset2dCatalog,
   Aset3dCatalog,
   AsetModel3d,
+  BuildingOccupant,
   SewaAset,
 } from "../models/index.js";
 import { hasPermission, PERMISSIONS } from "../middleware/auth.middleware.js";
@@ -34,6 +35,18 @@ const sendPublicMarkers = (res, markers, cacheStatus) => {
 };
 
 const popupExtendedAssetAttributes = [
+  "lintas",
+  "km_hm",
+  "dusun",
+  "kabupaten_kota",
+  "provinsi",
+  "easting",
+  "northing",
+  "coordinate_crs",
+  "penguasaan",
+  "foto_aset",
+  "notes",
+  "njop_tahun",
   "batas_utara",
   "batas_selatan",
   "batas_timur",
@@ -54,6 +67,18 @@ const popupExtendedAssetAttributes = [
 ];
 
 const serializePopupExtendedFields = (asset) => ({
+  lintas: asset.lintas || null,
+  km_hm: asset.km_hm || null,
+  dusun: asset.dusun || null,
+  kabupaten_kota: asset.kabupaten_kota || null,
+  provinsi: asset.provinsi || null,
+  easting: asset.easting,
+  northing: asset.northing,
+  coordinate_crs: asset.coordinate_crs || null,
+  penguasaan: asset.penguasaan || null,
+  foto_aset: asset.foto_aset || null,
+  notes: asset.notes || null,
+  njop_tahun: asset.njop_tahun || null,
   batas_utara: asset.batas_utara || null,
   batas_selatan: asset.batas_selatan || null,
   batas_timur: asset.batas_timur || null,
@@ -230,6 +255,7 @@ export const getPublicMarkers = async (req, res) => {
         "luas_lapangan",
         "opd_pengguna",
         "atas_nama",
+        "keterangan",
         "nibar",
         "kw",
         "polygon_bidang",
@@ -268,7 +294,10 @@ export const getPublicMarkers = async (req, res) => {
         {
           model: Aset3dCatalog,
           as: "catalogs3d",
-          attributes: ["kode_3d", "kode_2d", "building_name"],
+          attributes: [
+            "kode_3d", "kode_2d", "building_name", "jenis_bangunan",
+            "material_dinding", "material_lantai", "material_atap",
+          ],
           where: { status: "active" },
           required: false,
         },
@@ -330,10 +359,13 @@ export const getPublicMarkers = async (req, res) => {
           catalog.building_name || catalog.kode_3d,
         ]),
       );
+      const buildingProfilesByCode = Object.fromEntries(
+        (plain.catalogs3d || []).map((catalog) => [catalog.kode_3d, catalog]),
+      );
       const activeModels3d = (plain.models3d || []).map((model) => ({
         ...model,
-        building_name: buildingNamesByCode[model.kode_3d]
-          || model.kode_3d,
+        building_name: buildingNamesByCode[model.kode_3d] || model.kode_3d,
+        ...buildingProfilesByCode[model.kode_3d],
       }));
       const activeModel3d = activeModels3d[0] || null;
 
@@ -374,6 +406,7 @@ export const getPublicMarkers = async (req, res) => {
           : null,
         opd_pengguna: plain.opd_pengguna || null,
         atas_nama: plain.atas_nama || null,
+        keterangan: plain.keterangan || null,
         nibar: plain.nibar || null,
         kw: plain.kw || null,
         polygon: plain.polygon_bidang || null,
@@ -506,6 +539,10 @@ export const getLayers = async (req, res) => {
 export const getMarkers = async (req, res) => {
   try {
     const { status, jenis_aset } = req.query;
+    const canViewPrivateOccupantData = hasPermission(
+      req.user?.role,
+      PERMISSIONS.ASET_UPDATE,
+    );
     const publishedModelAssetIds = await getPublishedModelAssetIds();
 
     const where = {
@@ -580,14 +617,30 @@ export const getMarkers = async (req, res) => {
         {
           model: Aset3dCatalog,
           as: "catalogs3d",
-          attributes: ["kode_3d", "kode_2d", "building_name"],
+          attributes: [
+            "kode_3d", "kode_2d", "building_name", "jenis_bangunan",
+            "material_dinding", "material_lantai", "material_atap",
+          ],
           where: { status: "active" },
           required: false,
+          include: canViewPrivateOccupantData ? [{
+            model: BuildingOccupant,
+            as: "occupants",
+            attributes: [
+              "id_penghuni", "nama_penghuni", "alamat", "tempat_lahir",
+              "tanggal_lahir", "pekerjaan", "no_ktp", "status_penguasaan",
+            ],
+            where: { aktif: true },
+            required: false,
+          }] : [],
         },
         {
           model: SewaAset,
           as: "sewas",
-          attributes: ["id_sewa", "status", "nama_penyewa"],
+          attributes: [
+            "id_sewa", "status", "nama_penyewa", "nomor_kontrak",
+            "tanggal_mulai", "tanggal_berakhir", "nilai_estimasi", "kode_3d",
+          ],
           required: false,
         },
         {
@@ -649,11 +702,27 @@ export const getMarkers = async (req, res) => {
           catalog.building_name || catalog.kode_3d,
         ]),
       );
-      const activeModels3d = (plain.models3d || []).map((model) => ({
-        ...model,
-        building_name: buildingNamesByCode[model.kode_3d]
-          || model.kode_3d,
-      }));
+      const buildingProfilesByCode = Object.fromEntries(
+        (plain.catalogs3d || []).map((catalog) => [catalog.kode_3d, catalog]),
+      );
+      const activeModels3d = (plain.models3d || []).map((model) => {
+        const buildingSewa = (plain.sewas || []).find(
+          (sewa) =>
+            sewa.kode_3d === model.kode_3d
+            && ["Disewakan", "Akan Berakhir"].includes(sewa.status),
+        );
+        return {
+          ...model,
+          building_name: buildingNamesByCode[model.kode_3d] || model.kode_3d,
+          ...buildingProfilesByCode[model.kode_3d],
+          status_sewa: buildingSewa ? "Tersewa" : statusSewa,
+          penyewa_aktif: buildingSewa?.nama_penyewa || null,
+          nomor_kontrak: buildingSewa?.nomor_kontrak || null,
+          tanggal_mulai_sewa: buildingSewa?.tanggal_mulai || null,
+          tanggal_berakhir_sewa: buildingSewa?.tanggal_berakhir || null,
+          estimasi_sewa: buildingSewa?.nilai_estimasi || null,
+        };
+      });
       const activeModel3d = activeModels3d[0] || null;
 
       return {
@@ -728,6 +797,12 @@ export const getMarkers = async (req, res) => {
         sumber: plain.sumber || null,
         status_sewa: statusSewa,
         penyewa_aktif: activeSewa ? activeSewa.nama_penyewa : null,
+        nomor_kontrak: activeSewa?.nomor_kontrak || null,
+        tanggal_mulai_sewa: activeSewa?.tanggal_mulai || null,
+        tanggal_berakhir_sewa: activeSewa?.tanggal_berakhir || null,
+        estimasi_sewa: activeSewa?.nilai_estimasi || null,
+        penghuni_aktif: activeModel3d?.occupants?.[0] || null,
+        jumlah_penghuni: activeModel3d?.occupants?.length || 0,
         id_sewa_aktif: activeSewa?.id_sewa || availableSewa?.id_sewa || null,
       };
     });

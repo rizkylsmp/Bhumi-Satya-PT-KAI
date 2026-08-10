@@ -21,6 +21,10 @@ const Aset3dCatalog = sequelize.define(
       type: DataTypes.STRING(150),
       allowNull: true,
     },
+    jenis_bangunan: { type: DataTypes.STRING(100), allowNull: true },
+    material_dinding: { type: DataTypes.STRING(100), allowNull: true },
+    material_lantai: { type: DataTypes.STRING(100), allowNull: true },
+    material_atap: { type: DataTypes.STRING(100), allowNull: true },
     status: {
       type: DataTypes.STRING(20),
       allowNull: false,

@@ -176,6 +176,17 @@ const TaxFields = ({ formData, onChange }) => (
       </p>
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         <FormInput
+          label="Tahun NJOP"
+          name="njop_tahun"
+          type="number"
+          min="1900"
+          max="2200"
+          placeholder="2026"
+          value={formData.njop_tahun}
+          onChange={onChange}
+          size="lg"
+        />
+        <FormInput
           label="FID"
           name="pajak_fid"
           type="number"
@@ -396,6 +407,15 @@ const initialFormData = {
   batas_timur: "",
   batas_barat: "",
   penggunaan_saat_ini: "",
+  lintas: "",
+  km_hm: "",
+  dusun: "",
+  kabupaten_kota: "",
+  provinsi: "",
+  easting: "",
+  northing: "",
+  coordinate_crs: "",
+  penguasaan: "",
   // Data Administratif
   kode_bmd: "",
   nilai_buku: "",
@@ -425,6 +445,7 @@ const initialFormData = {
   luas_bangunan_pemetaan: "",
   njop_bumi_pemetaan: "",
   njop_bangunan_pemetaan: "",
+  njop_tahun: "",
   pbb_pemetaan: "",
   volume_bangunan: "",
   tinggi_bangunan: "",
@@ -559,6 +580,15 @@ export default function AssetFormModal({
         batas_timur: assetData.batas_timur || "",
         batas_barat: assetData.batas_barat || "",
         penggunaan_saat_ini: assetData.penggunaan_saat_ini || "",
+        lintas: assetData.lintas || "",
+        km_hm: assetData.km_hm || "",
+        dusun: assetData.dusun || "",
+        kabupaten_kota: assetData.kabupaten_kota || "",
+        provinsi: assetData.provinsi || "",
+        easting: assetData.easting ?? "",
+        northing: assetData.northing ?? "",
+        coordinate_crs: assetData.coordinate_crs || "",
+        penguasaan: assetData.penguasaan || "",
         // Data Administratif
         kode_bmd: assetData.kode_bmd || "",
         nilai_buku: assetData.nilai_buku || "",
@@ -588,6 +618,7 @@ export default function AssetFormModal({
         luas_bangunan_pemetaan: assetData.luas_bangunan_pemetaan ?? "",
         njop_bumi_pemetaan: assetData.njop_bumi_pemetaan ?? "",
         njop_bangunan_pemetaan: assetData.njop_bangunan_pemetaan ?? "",
+        njop_tahun: assetData.njop_tahun ?? "",
         pbb_pemetaan: assetData.pbb_pemetaan ?? "",
         volume_bangunan: assetData.volume_bangunan ?? "",
         tinggi_bangunan: assetData.tinggi_bangunan ?? "",
@@ -812,8 +843,8 @@ export default function AssetFormModal({
     e.preventDefault();
 
     const requiredFields = [
-      { name: "kode_aset", label: "Kode Aset", section: "identitas" },
-      { name: "nama_aset", label: "Nama Aset", section: "identitas" },
+      { name: "kode_aset", label: "Kode Tanah", section: "identitas" },
+      { name: "nama_aset", label: "Nama Tanah", section: "identitas" },
     ];
     const missingField = requiredFields.find((field) => (
       formData[field.name] === null
@@ -860,6 +891,9 @@ export default function AssetFormModal({
         njop_bangunan_pemetaan: toNullableNumber(
           formData.njop_bangunan_pemetaan,
         ),
+        njop_tahun: Number.parseInt(formData.njop_tahun, 10) || null,
+        easting: toNullableNumber(formData.easting),
+        northing: toNullableNumber(formData.northing),
         pbb_pemetaan: toNullableNumber(formData.pbb_pemetaan),
         volume_bangunan: toNullableNumber(formData.volume_bangunan),
         tinggi_bangunan: toNullableNumber(formData.tinggi_bangunan),
@@ -905,12 +939,11 @@ export default function AssetFormModal({
         submitData.jenis_aset = "Bidang Tanah";
         submitData.opd_pengguna = submitData.opd_pengguna || "Pengelola Aset";
         submitData.atas_nama =
-          submitData.atas_nama || "Pemerintah Kota Pasuruan";
+        submitData.atas_nama || "Organisasi Pemilik Aset";
         if (!submitData.lokasi) {
           submitData.lokasi = [
             submitData.desa_kelurahan,
             submitData.kecamatan,
-            "Kota Pasuruan",
           ]
             .filter(Boolean)
             .join(", ");
@@ -1054,7 +1087,7 @@ export default function AssetFormModal({
                       {assetData.nama_aset}
                     </p>
                     <p className="text-xs text-text-muted truncate">
-                      {assetData.kode_aset} &bull; Aset Tanah &bull;{" "}
+                      ID {assetData.id_aset ?? assetData.id ?? "-"} &bull; {assetData.kode_aset} &bull; Tanah &bull;{" "}
                       {assetData.lokasi || "Lokasi belum diisi"}
                     </p>
                   </div>
@@ -1072,18 +1105,18 @@ export default function AssetFormModal({
                   {/* Row 1: Kode, Nama */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <FormInput
-                      label="Kode Aset"
+                      label="Kode Tanah"
                       name="kode_aset"
-                      placeholder="AST-XXX"
+                      placeholder="TNH-XXX"
                       value={formData.kode_aset}
                       onChange={handleInputChange}
                       required
                       size="lg"
                     />
                     <FormInput
-                      label="Nama Aset"
+                      label="Nama Tanah"
                       name="nama_aset"
-                      placeholder="Nama Aset"
+                      placeholder="Nama Tanah"
                       value={formData.nama_aset}
                       onChange={handleInputChange}
                       required
@@ -1104,16 +1137,16 @@ export default function AssetFormModal({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <FormInput
-                        label="Kode Aset"
+                        label="Kode Tanah"
                         name="kode_aset"
-                        placeholder="Contoh: AST-XXXX"
+                        placeholder="Contoh: TNH-XXXX"
                         value={formData.kode_aset}
                         onChange={handleInputChange}
                         required
                         size="lg"
                       />
                       <FormInput
-                        label="Nama Aset"
+                        label="Nama Tanah"
                         name="nama_aset"
                         placeholder="Nama bidang tanah"
                         value={formData.nama_aset}
@@ -1199,7 +1232,7 @@ export default function AssetFormModal({
                       <FormInput
                         label="Atas Nama"
                         name="atas_nama"
-                        placeholder="Pemerintah Kota Pasuruan"
+                        placeholder="Organisasi Pemilik Aset"
                         value={formData.atas_nama}
                         onChange={handleInputChange}
                         size="lg"
@@ -1581,6 +1614,14 @@ export default function AssetFormModal({
                       onChange={handleInputChange}
                       size="lg"
                     />
+                    <FormInput
+                      label="Penguasaan"
+                      name="penguasaan"
+                      placeholder="Status atau pihak yang menguasai"
+                      value={formData.penguasaan}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
                   </div>
                 </div>
               )}
@@ -1600,6 +1641,31 @@ export default function AssetFormModal({
                     rows={2}
                     size="lg"
                   />
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <FormInput
+                      label="Lintas"
+                      name="lintas"
+                      placeholder="Nama lintas/jalur"
+                      value={formData.lintas}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
+                    <FormInput
+                      label="KM/HM"
+                      name="km_hm"
+                      placeholder="Contoh: KM 12+500"
+                      value={formData.km_hm}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                    <FormInput label="Dusun" name="dusun" value={formData.dusun} onChange={handleInputChange} size="lg" />
+                    <FormInput label="Kabupaten/Kota" name="kabupaten_kota" value={formData.kabupaten_kota} onChange={handleInputChange} size="lg" />
+                    <FormInput label="Provinsi" name="provinsi" value={formData.provinsi} onChange={handleInputChange} size="lg" />
+                  </div>
 
                   {/* Kecamatan, Desa/Kelurahan, Penggunaan */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1738,6 +1804,35 @@ export default function AssetFormModal({
                     }}
                     label="Koordinat Lokasi"
                   />
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                    <FormInput
+                      label="Easting"
+                      name="easting"
+                      type="number"
+                      step="0.001"
+                      value={formData.easting}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
+                    <FormInput
+                      label="Northing"
+                      name="northing"
+                      type="number"
+                      step="0.001"
+                      value={formData.northing}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
+                    <FormInput
+                      label="Sistem Koordinat/CRS"
+                      name="coordinate_crs"
+                      placeholder="Contoh: EPSG:32749 / UTM 49S"
+                      value={formData.coordinate_crs}
+                      onChange={handleInputChange}
+                      size="lg"
+                    />
+                  </div>
 
                   <AssetPolygonDrawer
                     polygonData={formData.polygon_bidang}

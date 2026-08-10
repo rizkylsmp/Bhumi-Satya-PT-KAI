@@ -1,5 +1,12 @@
 import { Op, Sequelize } from "sequelize";
-import { Aset, Aset2dCatalog, User, SewaAset, sequelize } from "../models/index.js";
+import {
+  Aset,
+  Aset2dCatalog,
+  AsetNjopHistory,
+  User,
+  SewaAset,
+  sequelize,
+} from "../models/index.js";
 import AuditService from "../services/audit.service.js";
 import NotificationService from "../services/notification.service.js";
 import {
@@ -9,6 +16,26 @@ import {
 import { getCentroidFromPolygonField } from "../utils/polygonCentroid.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const syncNjopHistory = async ({
+  assetId,
+  tahun,
+  njopTanah,
+  njopBangunan,
+  userId,
+  transaction,
+}) => {
+  const normalizedYear = Number.parseInt(tahun, 10);
+  if (!Number.isInteger(normalizedYear) || normalizedYear < 1900 || normalizedYear > 2200) return;
+  await AsetNjopHistory.upsert({
+    id_aset: assetId,
+    tahun: normalizedYear,
+    njop_tanah: njopTanah ?? null,
+    njop_bangunan: njopBangunan ?? null,
+    created_by: userId,
+    updated_at: new Date(),
+  }, { transaction });
+};
 
 const isTransientDbConnectionError = (error) => {
   const code = error?.parent?.code || error?.original?.code || error?.code;
@@ -783,6 +810,15 @@ export const create = async (req, res) => {
       batas_timur,
       batas_barat,
       penggunaan_saat_ini,
+      lintas,
+      km_hm,
+      dusun,
+      kabupaten_kota,
+      provinsi,
+      easting,
+      northing,
+      coordinate_crs,
+      penguasaan,
       nib,
       kw,
       // Data Administratif
@@ -815,6 +851,7 @@ export const create = async (req, res) => {
       luas_bangunan_pemetaan,
       njop_bumi_pemetaan,
       njop_bangunan_pemetaan,
+      njop_tahun,
       pbb_pemetaan,
       volume_bangunan,
       tinggi_bangunan,
@@ -837,7 +874,7 @@ export const create = async (req, res) => {
     if (!kode_aset || !nama_aset) {
       return res.status(400).json({
         success: false,
-        error: "Kode aset dan nama aset wajib diisi",
+        error: "Kode bangunan dan nama bangunan wajib diisi",
       });
     }
 
@@ -853,7 +890,7 @@ export const create = async (req, res) => {
     if (existingAset) {
       return res.status(400).json({
         success: false,
-        error: "Kode aset sudah digunakan",
+        error: "Kode bangunan sudah digunakan",
       });
     }
 
@@ -872,7 +909,7 @@ export const create = async (req, res) => {
     });
 
     const newAset = await sequelize.transaction(async (transaction) => {
-      return Aset.create({
+      const createdAsset = await Aset.create({
       kode_aset,
       nama_aset,
       lokasi: lokasi || "-",
@@ -909,6 +946,15 @@ export const create = async (req, res) => {
       batas_timur: batas_timur || null,
       batas_barat: batas_barat || null,
       penggunaan_saat_ini: penggunaan_saat_ini || null,
+      lintas: lintas || null,
+      km_hm: km_hm || null,
+      dusun: dusun || null,
+      kabupaten_kota: kabupaten_kota || null,
+      provinsi: provinsi || null,
+      easting: easting ?? null,
+      northing: northing ?? null,
+      coordinate_crs: coordinate_crs || null,
+      penguasaan: penguasaan || null,
       nib: nib || null,
       kw: kw || null,
       // Data Administratif
@@ -941,6 +987,7 @@ export const create = async (req, res) => {
       luas_bangunan_pemetaan: luas_bangunan_pemetaan ?? null,
       njop_bumi_pemetaan: njop_bumi_pemetaan ?? null,
       njop_bangunan_pemetaan: njop_bangunan_pemetaan ?? null,
+      njop_tahun: njop_tahun || null,
       pbb_pemetaan: pbb_pemetaan ?? null,
       volume_bangunan: volume_bangunan ?? null,
       tinggi_bangunan: tinggi_bangunan ?? null,
@@ -952,6 +999,15 @@ export const create = async (req, res) => {
       created_at: new Date(),
         updated_at: new Date(),
       }, { transaction });
+      await syncNjopHistory({
+        assetId: createdAsset.id_aset,
+        tahun: njop_tahun,
+        njopTanah: njop_bumi_pemetaan,
+        njopBangunan: njop_bangunan_pemetaan,
+        userId: req.user.id_user,
+        transaction,
+      });
+      return createdAsset;
     });
 
     // Log audit
@@ -1010,7 +1066,7 @@ export const update = async (req, res) => {
       if (existingAset) {
         return res.status(400).json({
           success: false,
-          error: "Kode aset sudah digunakan",
+          error: "Kode bangunan sudah digunakan",
         });
       }
     }
@@ -1057,6 +1113,13 @@ export const update = async (req, res) => {
     const oldData = asset.toJSON();
 
     await asset.update(updateData);
+    await syncNjopHistory({
+      assetId: asset.id_aset,
+      tahun: updateData.njop_tahun,
+      njopTanah: updateData.njop_bumi_pemetaan,
+      njopBangunan: updateData.njop_bangunan_pemetaan,
+      userId: req.user.id_user,
+    });
 
     // Fetch updated asset with creator info
     const updatedAsset = await Aset.findByPk(id, {

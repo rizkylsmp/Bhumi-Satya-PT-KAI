@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { permintaanService } from "../../services/api";
 import Pagination from "../../components/asset/Pagination";
+import RentalCategoryTabs from "../../components/sewa/RentalCategoryTabs";
 
 const STATUS_CONFIG = {
   Baru: {
@@ -51,6 +52,7 @@ export default function SewaDiajukanPage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Tanah");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -63,6 +65,7 @@ export default function SewaDiajukanPage() {
         page,
         limit: itemsPerPage,
         search,
+        kategori: category,
         sortBy: "created_at",
         sortOrder: "desc",
       });
@@ -74,7 +77,7 @@ export default function SewaDiajukanPage() {
     } finally {
       setLoading(false);
     }
-  }, [itemsPerPage, page, search]);
+  }, [category, itemsPerPage, page, search]);
 
   useEffect(() => {
     fetchData();
@@ -111,6 +114,14 @@ export default function SewaDiajukanPage() {
         </div>
       </div>
 
+      <RentalCategoryTabs
+        value={category}
+        onChange={(value) => {
+          setCategory(value);
+          setPage(1);
+        }}
+      />
+
       <div className="bg-surface border border-border rounded-2xl p-4">
         <div className="relative max-w-xl">
           <MagnifyingGlassIcon
@@ -122,7 +133,7 @@ export default function SewaDiajukanPage() {
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Cari nama aset atau tujuan sewa"
+            placeholder={`Cari ${category.toLowerCase()} atau tujuan sewa`}
             className="w-full h-11 rounded-xl border border-border bg-surface-secondary pl-10 pr-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
           />
         </div>
@@ -192,6 +203,11 @@ function RequestCard({ item }) {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-bold text-text-primary truncate">{item.nama_aset}</h2>
+          {(item.aset?.id_aset ?? item.sewa?.id_aset ?? item.id_aset) && (
+            <p className="mt-1 font-mono text-[10px] font-semibold text-text-muted">
+              ID {item.aset?.id_aset ?? item.sewa?.id_aset ?? item.id_aset}
+            </p>
+          )}
           <p className="text-sm text-text-muted mt-1 line-clamp-2">
             {item.tujuan_sewa}
           </p>

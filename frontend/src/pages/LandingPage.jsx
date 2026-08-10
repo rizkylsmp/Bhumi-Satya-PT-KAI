@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -38,9 +38,10 @@ import { useAuthStore } from "../stores/authStore";
 import { useSessionStore } from "../stores/sessionStore";
 import { formatDate, formatNumber } from "../utils/format";
 import { normalizeMapMarkers } from "../utils/mapAssets";
-import AssetMapDisplay from "../components/map/AssetMapDisplay";
-import AssetDetailPanel from "../components/map/shared/AssetDetailPanel";
-import SewaPolygonMap from "../components/sewa/SewaPolygonMap";
+import {
+  searchMapRecords,
+  splitMapSearchHighlight,
+} from "../utils/mapSearch";
 import ChatbotButton from "../components/chatbot/ChatbotButton";
 import ChatbotModal from "../components/chatbot/ChatbotModal";
 import { normalizeRole } from "../utils/permissions";
@@ -49,6 +50,53 @@ import {
   RENTAL_FEATURE_ENABLED,
 } from "../config/featureFlags";
 import BrandMark from "../components/shared/BrandMark";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
+
+const AssetMapDisplay = lazyWithRetry(
+  () => import("../components/map/AssetMapDisplay"),
+);
+const AssetDetailPanel = lazyWithRetry(
+  () => import("../components/map/shared/AssetDetailPanel"),
+);
+const SewaPolygonMap = lazyWithRetry(
+  () => import("../components/sewa/SewaPolygonMap"),
+);
+
+function MapLoadingState({ deferred = false }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center bg-surface-secondary/70 px-6 text-center">
+      <div>
+        <CircleNotchIcon
+          size={25}
+          weight="bold"
+          className="mx-auto animate-spin text-accent"
+        />
+        <p className="mt-3 text-sm font-semibold text-text-secondary">
+          {deferred ? "Peta dimuat saat diperlukan" : "Menyiapkan Digital Twin"}
+        </p>
+        <p className="mt-1 text-xs text-text-muted">
+          {deferred
+            ? "Gulir sedikit lagi untuk membuka peta interaktif."
+            : "Mohon tunggu sebentar."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MapSearchHighlight({ text, query }) {
+  return splitMapSearchHighlight(text, query).map((segment, index) =>
+    segment.highlighted ? (
+      <mark
+        key={`${segment.text}-${index}`}
+        className="rounded-sm bg-amber-300/80 px-0.5 text-slate-950"
+      >
+        {segment.text}
+      </mark>
+    ) : (
+      <span key={`${segment.text}-${index}`}>{segment.text}</span>
+    ));
+}
 
 const initialRegisterForm = {
   nama_lengkap: "",
@@ -272,11 +320,19 @@ function AssetDetailModal({ item, onClose, onApply }) {
                 Peta Lokasi
               </p>
               <div className="rounded-xl overflow-hidden border border-border">
-                <SewaPolygonMap
-                  polygon={polygonData}
-                  height={240}
-                  showHeader={false}
-                />
+                <Suspense
+                  fallback={
+                    <div className="grid h-60 place-items-center bg-surface-secondary text-xs font-semibold text-text-muted">
+                      Menyiapkan peta lokasi…
+                    </div>
+                  }
+                >
+                  <SewaPolygonMap
+                    polygon={polygonData}
+                    height={240}
+                    showHeader={false}
+                  />
+                </Suspense>
               </div>
             </div>
           )}
@@ -483,10 +539,13 @@ export default function LandingPage() {
 
   // Map data
   const [mapAssets, setMapAssets] = useState([]);
+  const [mapLoading, setMapLoading] = useState(true);
   const [mapSearch, setMapSearch] = useState("");
   const [focusedAsset, setFocusedAsset] = useState(null);
+  const [focusedModel, setFocusedModel] = useState(null);
   const [selectedMapAsset, setSelectedMapAsset] = useState(null);
-  const [isLandingMap3d, setIsLandingMap3d] = useState(true);
+  const [isLandingMap3d, setIsLandingMap3d] = useState(false);
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
   const [showMapMarkers, setShowMapMarkers] = useState(false);
   const [showMapPolygons, setShowMapPolygons] = useState(true);
 
@@ -545,12 +604,33 @@ export default function LandingPage() {
     location.state?.openLoginPanel,
   ]);
 
+  useEffect(() => {
+    const mapSection = petaRef.current;
+    if (!mapSection || !("IntersectionObserver" in window)) {
+      setShouldLoadMap(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldLoadMap(true);
+        observer.disconnect();
+      },
+      { rootMargin: "500px 0px" },
+    );
+
+    observer.observe(mapSection);
+    return () => observer.disconnect();
+  }, []);
+
   // Fetch map markers
   useEffect(() => {
     petaService
       .getPublicMarkers()
       .then((res) => setMapAssets(normalizeMapMarkers(res.data.data || [])))
-      .catch(() => setMapAssets([]));
+      .catch(() => setMapAssets([]))
+      .finally(() => setMapLoading(false));
   }, []);
 
   // Fetch available sewa
@@ -570,16 +650,33 @@ export default function LandingPage() {
   }, []);
 
   const filteredMapAssets = useMemo(() => {
-    if (!mapSearch.trim()) return mapAssets;
-    const q = mapSearch.toLowerCase();
-    return mapAssets.filter(
-      (a) =>
-        a.nama_aset?.toLowerCase().includes(q) ||
-        a.lokasi?.toLowerCase().includes(q) ||
-        a.kecamatan?.toLowerCase().includes(q) ||
-        a.desa_kelurahan?.toLowerCase().includes(q),
-    );
+    if (!mapSearch.trim()) return [];
+    return searchMapRecords(mapAssets, mapSearch);
   }, [mapAssets, mapSearch]);
+
+  const publicStats = useMemo(() => {
+    const parcelCodes = new Set(
+      mapAssets.map((asset) => asset.kode_2d).filter(Boolean),
+    );
+    const buildingCodes = new Set(
+      mapAssets.flatMap((asset) => asset.kode_3d_list || []).filter(Boolean),
+    );
+    const buildingCount = buildingCodes.size || mapAssets.reduce(
+      (total, asset) => total + (Number(asset.building_count_3d) || 0),
+      0,
+    );
+    const districts = new Set(
+      mapAssets
+        .map((asset) => String(asset.kecamatan || "").trim())
+        .filter(Boolean),
+    );
+
+    return {
+      parcels: parcelCodes.size,
+      buildings: buildingCount,
+      districts: districts.size,
+    };
+  }, [mapAssets]);
 
   const scrollTo = (ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth" });
@@ -827,9 +924,9 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300 md:text-lg">
-              Bhumi Satya menghadirkan Digital Twin 2D dan 3D untuk memahami
-              kondisi ruang, sekaligus layanan penyewaan untuk menemukan objek
-              tersedia dan mengajukan pemanfaatan secara online.
+              Bhumi Satya menghadirkan Digital Twin dalam mode 2D dan 3D untuk
+              memahami kondisi ruang, lokasi aset, dan informasi pertanahan
+              secara terpadu.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button
@@ -887,11 +984,11 @@ export default function LandingPage() {
                   Satu Platform Terintegrasi
                 </p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
-                  Digital Twin & layanan penyewaan
+                  Digital Twin pertanahan terpadu
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  Pahami kondisi ruang secara visual, lalu lanjutkan ke layanan
-                  penyewaan melalui alur yang saling terhubung.
+                  Pahami kondisi ruang, bidang tanah, dan bangunan secara visual
+                  melalui data 2D dan 3D yang saling terhubung.
                 </p>
               </div>
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-200">
@@ -901,30 +998,30 @@ export default function LandingPage() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               {[
                 {
-                  label: "Digital Twin",
-                  value: "2D + 3D",
-                  description: "Visual ruang terpadu",
+                  label: "Bidang 2D",
+                  value: mapLoading ? "—" : formatNumber(publicStats.parcels),
+                  description: "Bidang terpetakan",
                   icon: MapTrifoldIcon,
                 },
                 {
-                  label: "Data terhubung",
-                  value: mapAssets.length || "—",
-                  description: "Objek dalam peta",
+                  label: "Bangunan 3D",
+                  value: mapLoading ? "—" : formatNumber(publicStats.buildings),
+                  description: "Bangunan tervisualisasi",
                   icon: BuildingsIcon,
                 },
                 ...(RENTAL_FEATURE_ENABLED
                   ? [
                       {
-                  label: "Pilihan sewa",
-                  value: items.length || "—",
+                  label: "Tersedia Disewa",
+                  value: loading ? "—" : formatNumber(items.length),
                   description: "Objek ditawarkan",
                   icon: StorefrontIcon,
                 },
                 {
-                  label: "Pengajuan",
-                  value: "Online",
-                  description: "Alur masyarakat",
-                  icon: PaperPlaneTiltIcon,
+                  label: "Kecamatan",
+                  value: mapLoading ? "—" : formatNumber(publicStats.districts),
+                  description: "Wilayah tercakup",
+                  icon: MapPinIcon,
                       },
                     ]
                   : []),
@@ -1056,11 +1153,20 @@ export default function LandingPage() {
             </p>
             {filteredMapAssets.length > 0 && (
               <div className="bg-surface-secondary rounded-xl border border-border max-h-48 overflow-y-auto divide-y divide-border">
-                {filteredMapAssets.slice(0, 20).map((a) => (
+                {filteredMapAssets.slice(0, 20).map(({ record: a, matches }) => (
                   <button
                     key={a.id}
                     onClick={() => {
                       setFocusedAsset(a);
+                      const matchingModel = searchMapRecords(
+                        a.active_models_3d || (a.active_model_3d ? [a.active_model_3d] : []),
+                        mapSearch,
+                      )[0]?.record || a.active_model_3d || a.active_models_3d?.[0] || null;
+                      setFocusedModel(matchingModel ? {
+                        assetId: a.id_aset || a.id,
+                        modelId: matchingModel.id_model_3d,
+                        kode3d: matchingModel.kode_3d,
+                      } : null);
                       setMapSearch("");
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-tertiary transition-colors text-left"
@@ -1072,11 +1178,20 @@ export default function LandingPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text-primary truncate">
-                        {a.nama_aset}
+                        <MapSearchHighlight
+                          text={a.nama_aset || "Aset tanpa nama"}
+                          query={mapSearch}
+                        />
                       </p>
                       {a.lokasi && (
                         <p className="text-[11px] text-text-muted truncate">
-                          {a.lokasi}
+                          <MapSearchHighlight text={a.lokasi} query={mapSearch} />
+                        </p>
+                      )}
+                      {matches[0] && (
+                        <p className="mt-0.5 truncate text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                          {matches[0].label}:{" "}
+                          <MapSearchHighlight text={matches[0].value} query={mapSearch} />
                         </p>
                       )}
                     </div>
@@ -1104,38 +1219,47 @@ export default function LandingPage() {
         </div>
         <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
           <div className="relative h-[34rem] md:h-[42rem] lg:h-[48rem]">
-            <AssetMapDisplay
-              assets={mapAssets}
-              allAssets={mapAssets}
-              mode="integrated"
-              highlightAssetId={focusedAsset?.id || null}
-              highlightRequestKey={
-                focusedAsset ? `landing-${focusedAsset.id}` : null
-              }
-              initialAsset3dMode
-              onAsset3dModeChange={setIsLandingMap3d}
-              onFeatureClick={setSelectedMapAsset}
-              onOtherLayerClick={() => setSelectedMapAsset(null)}
-              showControls={false}
-              activeLayer="bidang"
-              showMarkers={showMapMarkers}
-              setShowMarkers={setShowMapMarkers}
-              showPolygons={showMapPolygons}
-              setShowPolygons={setShowMapPolygons}
-              showKelurahan
-              showKecamatan
-              showSudahSertifikat
-              showBelumSertifikat
-              popupSectionScope="general"
-            />
-            {selectedMapAsset && (
-              <AssetDetailPanel
-                key={selectedMapAsset.id_aset || selectedMapAsset.id}
-                asset={selectedMapAsset}
-                onClose={() => setSelectedMapAsset(null)}
-                showModel3d={isLandingMap3d}
-                visibleSectionIds={["general"]}
-              />
+            {shouldLoadMap ? (
+              <Suspense fallback={<MapLoadingState />}>
+                <AssetMapDisplay
+                  assets={mapAssets}
+                  allAssets={mapAssets}
+                  mode="integrated"
+                  highlightAssetId={focusedAsset?.id || null}
+                  highlightRequestKey={
+                    focusedAsset ? `landing-${focusedAsset.id}` : null
+                  }
+                  focus3dTarget={isLandingMap3d ? focusedModel : null}
+                  focus3dRequestKey={focusedModel
+                    ? `landing-model-${focusedModel.modelId || focusedModel.kode3d}`
+                    : null}
+                  onAsset3dModeChange={setIsLandingMap3d}
+                  onFeatureClick={setSelectedMapAsset}
+                  onOtherLayerClick={() => setSelectedMapAsset(null)}
+                  showControls={false}
+                  activeLayer="bidang"
+                  showMarkers={showMapMarkers}
+                  setShowMarkers={setShowMapMarkers}
+                  showPolygons={showMapPolygons}
+                  setShowPolygons={setShowMapPolygons}
+                  showKelurahan
+                  showKecamatan
+                  showSudahSertifikat
+                  showBelumSertifikat
+                  popupSectionScope="general"
+                />
+                {selectedMapAsset && (
+                  <AssetDetailPanel
+                    key={selectedMapAsset.id_aset || selectedMapAsset.id}
+                    asset={selectedMapAsset}
+                    onClose={() => setSelectedMapAsset(null)}
+                    showModel3d={isLandingMap3d}
+                    visibleSectionIds={["general", "model3d", "land"]}
+                  />
+                )}
+              </Suspense>
+            ) : (
+              <MapLoadingState deferred />
             )}
             <div className="pointer-events-none absolute bottom-4 left-4 z-20">
               <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-950/75 px-3 py-2.5 text-white shadow-xl backdrop-blur-xl">
@@ -1341,7 +1465,7 @@ export default function LandingPage() {
                 </a>
 
                 <a
-                  href="tel:+623435421111"
+                  href="#"
                   className="flex items-center gap-3 group"
                 >
                   <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -1360,7 +1484,7 @@ export default function LandingPage() {
                 </a>
 
                 <a
-                  href="mailto:bpkad@pasuruankota.go.id"
+                  href="#"
                   className="flex items-center gap-3 group"
                 >
                   <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -1391,7 +1515,7 @@ export default function LandingPage() {
                   className="text-red-500 mt-0.5 shrink-0"
                 />
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Jl. Pahlawan No. 20, Kota Pasuruan, Jawa Timur 67126
+                  Informasi alamat belum tersedia
                 </p>
               </div>
             </div>

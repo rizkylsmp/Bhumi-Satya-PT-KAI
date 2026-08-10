@@ -3,6 +3,10 @@ import { ReceiptIcon } from "@phosphor-icons/react";
 
 const columns = [
   {
+    key: "njop_tahun",
+    label: "Tahun NJOP",
+  },
+  {
     key: "pajak_fid",
     label: "FID",
     sortable: true,

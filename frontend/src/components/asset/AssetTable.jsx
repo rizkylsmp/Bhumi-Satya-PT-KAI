@@ -226,7 +226,7 @@ export default function AssetTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="admin-data-table min-w-300">
+      <table className="admin-data-table min-w-280">
         <thead>
           <tr className="bg-linear-to-r from-surface-secondary to-surface border-b border-border">
             <TableHeader
@@ -245,7 +245,7 @@ export default function AssetTable({
               sortBy={sortBy}
               sortOrder={sortOrder}
             >
-              Kode Aset
+              Kode Tanah
             </TableHeader>
             <TableHeader
               sortable
@@ -257,7 +257,7 @@ export default function AssetTable({
               sortBy={sortBy}
               sortOrder={sortOrder}
             >
-              Nama Aset
+              Nama Tanah
             </TableHeader>
             <TableHeader
               className="min-w-50"
@@ -342,14 +342,14 @@ export default function AssetTable({
                   </span>
                 </td>
 
-                {/* Kode Aset */}
+                {/* Kode Tanah */}
                 <td className="px-4 py-4">
                   <span className="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-secondary rounded-lg text-sm font-mono font-semibold text-text-primary">
                     {asset.kode_aset}
                   </span>
                 </td>
 
-                {/* Nama Aset */}
+                {/* Nama Tanah */}
                 <td className="px-4 py-4">
                   <span className="text-sm font-medium text-text-primary wrap-break-word max-w-80">
                     {asset.nama_aset}

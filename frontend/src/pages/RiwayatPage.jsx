@@ -441,7 +441,7 @@ export default function RiwayatPage() {
           <button
             type="button"
             onClick={handleApplyFilter}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 text-[11px] font-semibold text-white transition hover:bg-accent-hover"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 text-[11px] font-semibold text-surface transition hover:bg-accent-hover"
           >
             <MagnifyingGlassIcon size={14} weight="bold" />
             Terapkan

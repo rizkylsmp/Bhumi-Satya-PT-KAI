@@ -14,6 +14,7 @@ import { permintaanService, sewaService } from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
 import Pagination from "../../components/asset/Pagination";
 import { formatCurrency } from "../../utils/format";
+import RentalCategoryTabs from "../../components/sewa/RentalCategoryTabs";
 
 function getImage(item) {
   const source = item.foto_sewa || item.aset?.foto_aset;
@@ -36,6 +37,7 @@ export default function AsetTersediaPage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Tanah");
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
   const [selected, setSelected] = useState(null);
@@ -47,14 +49,17 @@ export default function AsetTersediaPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await sewaService.getAvailableForMasyarakat({ search });
+      const response = await sewaService.getAvailableForMasyarakat({
+        search,
+        kategori: category,
+      });
       setData(response.data.data || []);
     } catch (error) {
       toast.error(error.response?.data?.error || "Gagal memuat aset tersedia");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [category, search]);
 
   useEffect(() => {
     fetchData();
@@ -111,7 +116,7 @@ export default function AsetTersediaPage() {
         <div className="min-w-0">
           <p className="text-xs font-semibold text-accent">Portal Masyarakat</p>
           <h1 className="admin-page-header__title">
-            Aset Tersedia
+            {category} Tersedia
           </h1>
           <p className="admin-page-header__description">
             Aset yang siap diajukan untuk disewa.
@@ -130,6 +135,14 @@ export default function AsetTersediaPage() {
         </div>
       </div>
 
+      <RentalCategoryTabs
+        value={category}
+        onChange={(value) => {
+          setCategory(value);
+          setPage(1);
+        }}
+      />
+
       <div className="bg-surface border border-border rounded-2xl p-4">
         <div className="relative max-w-xl">
           <MagnifyingGlassIcon
@@ -141,7 +154,7 @@ export default function AsetTersediaPage() {
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Cari nama aset atau lokasi"
+            placeholder={`Cari ${category.toLowerCase()} atau lokasi`}
             className="w-full h-11 rounded-xl border border-border bg-surface-secondary pl-10 pr-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
           />
         </div>
@@ -291,6 +304,11 @@ function AvailableCard({ item, onRequest }) {
       <div className="p-4 space-y-3">
         <div>
           <h2 className="font-bold text-text-primary line-clamp-2">{item.nama_aset}</h2>
+          {(item.aset?.id_aset ?? item.id_aset) && (
+            <p className="mt-1 font-mono text-[10px] font-semibold text-text-muted">
+              ID {item.aset?.id_aset ?? item.id_aset}
+            </p>
+          )}
           <p className="flex items-center gap-1.5 text-sm text-text-muted mt-1">
             <MapPinIcon size={14} className="shrink-0" />
             <span className="truncate">{item.lokasi_aset || item.aset?.lokasi || "-"}</span>

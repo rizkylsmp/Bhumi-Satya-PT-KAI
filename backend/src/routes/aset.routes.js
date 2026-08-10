@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   AsetController,
   AssetModel3dController,
+  IntegratedAssetDataController,
   Model3dObjectController,
 } from "../controllers/index.js";
 import {
@@ -79,6 +80,7 @@ router.get("/", canViewAset, AsetController.getAll);
 router.get("/stats", canViewAset, AsetController.getStats);
 router.get("/filter-options", canViewAset, AsetController.getFilterOptions);
 router.get("/map", canViewAset, AsetController.getForMap);
+router.get("/:id/njop-history", canViewAset, IntegratedAssetDataController.listNjopHistory);
 router.get("/:id", canViewAset, AsetController.getById);
 router.get("/:id/models-3d", canViewAset, AssetModel3dController.list);
 router.get(
@@ -102,6 +104,11 @@ router.post(
   "/",
   permissionMiddleware(PERMISSIONS.ASET_CREATE),
   AsetController.create,
+);
+router.post(
+  "/:id/njop-history",
+  permissionMiddleware(PERMISSIONS.ASET_UPDATE),
+  IntegratedAssetDataController.upsertNjopHistory,
 );
 router.post(
   "/:id/models-3d",

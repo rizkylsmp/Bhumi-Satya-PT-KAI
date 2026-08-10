@@ -41,6 +41,11 @@ import {
   getModelFocusZoom,
   resolveModelOffsetLocation,
 } from "../../../utils/model3dTransform";
+import { getGeometryBoundsCenter } from "../../../utils/popupConnector";
+import {
+  createJakartaShadowDateTime,
+  getJakartaDateTimeParts,
+} from "../../../utils/shadowAnalysis";
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "../mapDefaults";
 import {
   BASEMAP_OPTIONS,
@@ -446,6 +451,8 @@ const MapDisplayBPN = ({
   const hoveredBidangId = useRef(null);
   const hoveredAsset3dId = useRef(null);
   const selectedBidangId = useRef(null);
+  const bidangTanahGeoJsonRef = useRef(EMPTY_FEATURE_COLLECTION);
+  const selectedPopupAnchorRef = useRef(null);
   const analysisStateRef = useRef({ tool: null, points: [] });
   const baseLayerVisibilityRef = useRef(new Map());
   const isBPKAMode = mode === "bpka";
@@ -496,6 +503,17 @@ const MapDisplayBPN = ({
   const [analysisPoints, setAnalysisPoints] = useState([]);
   const [analysisGeometry, setAnalysisGeometry] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [shadowAnalysis, setShadowAnalysis] = useState(() => ({
+    enabled: false,
+    ...getJakartaDateTimeParts(),
+  }));
+  const shadowDateTime = useMemo(
+    () => createJakartaShadowDateTime(
+      shadowAnalysis.date,
+      shadowAnalysis.minutes,
+    ),
+    [shadowAnalysis.date, shadowAnalysis.minutes],
+  );
 
   const updateCompassBearing = useCallback((value) => {
     const numeric = Number(value);
@@ -566,6 +584,11 @@ const MapDisplayBPN = ({
           : [null];
 
       return activeModels.map((model, modelIndex) => {
+        const modelCatalog = Array.isArray(asset?.catalogs3d)
+          ? asset.catalogs3d.find(
+              (catalog) => String(catalog?.kode_3d || "") === String(model?.kode_3d || ""),
+            )
+          : null;
         const rawLatitude = parseCoordinateValue(model?.location_lat)
           ?? parseCoordinateValue(
             asset?.koordinat_lat ?? asset?.latitude ?? asset?.lat,
@@ -586,6 +609,16 @@ const MapDisplayBPN = ({
             : `asset-${assetId}-${modelIndex}`,
           assetId,
           modelId,
+          area2dCode:
+            model?.kode_2d
+            || modelCatalog?.kode_2d
+            || asset?.kode_2d
+            || null,
+          area2dLocation:
+            asset?.lokasi
+            || asset?.desa_kelurahan
+            || asset?.kecamatan
+            || "Lokasi bidang belum dilengkapi",
           name:
             model?.building_name
             || asset?.building_name_3d
@@ -629,31 +662,31 @@ const MapDisplayBPN = ({
     visible3dLocationIds === undefined
       ? default3dLocationIds
       : visible3dLocationIds;
+  const temporarySearchLocationId = focus3dTarget?.modelId
+    ? `model-${focus3dTarget.modelId}`
+    : null;
+  const renderedVisible3dLocationIds = useMemo(() => {
+    if (resolvedVisible3dLocationIds === null) return null;
+    return Array.from(new Set([
+      ...resolvedVisible3dLocationIds.map(String),
+      ...(temporarySearchLocationId ? [temporarySearchLocationId] : []),
+    ]));
+  }, [resolvedVisible3dLocationIds, temporarySearchLocationId]);
   const visible3dLocationIdSet = useMemo(
-    () => resolvedVisible3dLocationIds === null
+    () => renderedVisible3dLocationIds === null
       ? null
-      : new Set(resolvedVisible3dLocationIds.map(String)),
-    [resolvedVisible3dLocationIds],
-  );
-  const visible3dAssetIdSet = useMemo(
-    () => visible3dLocationIdSet === null
-      ? null
-      : new Set(
-          model3dLocations
-            .filter((location) => visible3dLocationIdSet.has(String(location.id)))
-            .map((location) => String(location.assetId)),
-        ),
-    [model3dLocations, visible3dLocationIdSet],
-  );
-  const visible3dAssets = useMemo(
-    () => visible3dAssetIdSet === null
-      ? roleAssets
-      : roleAssets.filter((asset) => visible3dAssetIdSet.has(String(asset?.id_aset || asset?.id))),
-    [roleAssets, visible3dAssetIdSet],
+      : new Set(renderedVisible3dLocationIds.map(String)),
+    [renderedVisible3dLocationIds],
   );
   const assetBuildingGeoJson = EMPTY_FEATURE_COLLECTION;
-  const detailedModels3d = useMemo(
-    () => visible3dAssets
+  // Keep the complete model catalogue mounted in Cesium. LOD/search visibility is
+  // changed in-place so selecting a result does not rebuild or blink the map.
+  const allAssetsResolved = useMemo(
+    () => allAssets || assets || [],
+    [allAssets, assets],
+  );
+  const allDetailedModels3d = useMemo(
+    () => allAssetsResolved
       .flatMap((asset) => {
         const activeModels = Array.isArray(asset?.active_models_3d)
           && asset.active_models_3d.length > 0
@@ -673,12 +706,12 @@ const MapDisplayBPN = ({
         const fallbackLongitude = Number.isFinite(assetLongitude)
           ? assetLongitude
           : fallbackPoints.length > 0
-            ? fallbackPoints.reduce((sum, point) => sum + point[0], 0) / fallbackPoints.length
+            ? fallbackPoints.reduce((sum, point) => sum + point[1], 0) / fallbackPoints.length
             : null;
         const fallbackLatitude = Number.isFinite(assetLatitude)
           ? assetLatitude
           : fallbackPoints.length > 0
-            ? fallbackPoints.reduce((sum, point) => sum + point[1], 0) / fallbackPoints.length
+            ? fallbackPoints.reduce((sum, point) => sum + point[0], 0) / fallbackPoints.length
             : null;
         return activeModels.map((model) => {
           const modelLatitude = parseCoordinateValue(model.location_lat);
@@ -687,19 +720,24 @@ const MapDisplayBPN = ({
             ...model,
             assetId: asset?.id_aset || asset?.id,
             locationId: `model-${model.id_model_3d}`,
+            building_footprint: asset?.building_footprint || null,
+            building_height_m: asset?.building_height_m || null,
             location_lat: modelLatitude ?? fallbackLatitude,
             location_long: modelLongitude ?? fallbackLongitude,
           };
         });
       })
       .filter((model) => (model?.public_url || model?.converted_public_url)
-        && (
-          visible3dLocationIdSet === null
-          || visible3dLocationIdSet.has(String(model.locationId))
-        )
         && parseCoordinateValue(model.location_lat) !== null
         && parseCoordinateValue(model.location_long) !== null),
-    [visible3dAssets, visible3dLocationIdSet],
+    [allAssetsResolved],
+  );
+  const detailedModels3d = useMemo(
+    () => visible3dLocationIdSet === null
+      ? allDetailedModels3d
+      : allDetailedModels3d.filter((model) =>
+          visible3dLocationIdSet.has(String(model.locationId))),
+    [allDetailedModels3d, visible3dLocationIdSet],
   );
   const tiledAssetIds = useMemo(
     () => forceDirectModelPreview
@@ -722,11 +760,6 @@ const MapDisplayBPN = ({
         || model.conversion_status !== "ready"
         || !model.converted_public_url),
     [detailedModels3d, forceDirectModelPreview, tileset3dStatus.state],
-  );
-  // Full asset list for highlight/flyTo lookups (falls back to filtered list)
-  const allAssetsResolved = useMemo(
-    () => allAssets || assets || [],
-    [allAssets, assets],
   );
   const analysisFeatureCollection = useMemo(
     () => buildAnalysisFeatureCollection({
@@ -797,6 +830,10 @@ const MapDisplayBPN = ({
   }, [roleAssets]);
 
   useEffect(() => {
+    bidangTanahGeoJsonRef.current = bidangTanahGeoJson;
+  }, [bidangTanahGeoJson]);
+
+  useEffect(() => {
     analysisStateRef.current = {
       tool: analysisTool,
       points: analysisPoints,
@@ -812,7 +849,7 @@ const MapDisplayBPN = ({
   // When both marker & polygon are unchecked, show small dot without labels
   const dotsOnlyMode = !showMarkers && !showPolygons;
   const effectiveShowMarkers = showMarkers || dotsOnlyMode;
-  const effectiveShowPolygons = showPolygons;
+  const effectiveShowPolygons = showPolygons || Boolean(highlightAssetId);
 
   const zntCachedData = useRef(null);
 
@@ -1079,9 +1116,9 @@ const MapDisplayBPN = ({
     // the normal certified/uncertified 2D styling instead of disappearing.
     const bidangSource = map.current?.getSource("bidang_tanah");
     if (bidangSource) {
-      bidangSource.setData(bidangTanahGeoJson);
+      bidangSource.setData(bidangTanahGeoJsonRef.current);
     }
-  }, [bidangTanahGeoJson, setSourceFeatureState]);
+  }, [setSourceFeatureState]);
 
   const setSelectedBidangOverlay = (feature) => {
     const selectedSource = map.current?.getSource(SELECTED_BIDANG_SOURCE_ID);
@@ -1392,11 +1429,35 @@ const MapDisplayBPN = ({
               (model) => String(model?.id_model_3d) === String(modelIdFromFeature),
             ) || matched.active_model_3d || null
           : null;
+        const modelLocation = selectedModel
+          ? resolveModelOffsetLocation(selectedModel)
+          : null;
+        const buildingCenter = getGeometryBoundsCenter(feature.geometry)
+          || getGeometryBoundsCenter(matched.building_footprint)
+          || (
+            Number.isFinite(Number(modelLocation?.longitude))
+            && Number.isFinite(Number(modelLocation?.latitude))
+              ? [Number(modelLocation.longitude), Number(modelLocation.latitude)]
+              : null
+          );
+        const popupAnchor = isBuilding3d && buildingCenter && map.current
+          ? map.current.project(buildingCenter)
+          : null;
         currentOnFeatureClick({
           ...matched,
           popup_context: isBuilding3d ? "3d" : "2d",
+          ...(popupAnchor
+            ? { popup_anchor: { x: popupAnchor.x, y: popupAnchor.y } }
+            : {}),
           ...(selectedModel ? { active_model_3d: selectedModel } : {}),
         });
+        selectedPopupAnchorRef.current = isBuilding3d && buildingCenter
+          ? {
+              assetId: matched.id_aset || matched.id,
+              longitude: buildingCenter[0],
+              latitude: buildingCenter[1],
+            }
+          : null;
         return;
       }
     }
@@ -1771,18 +1832,10 @@ const MapDisplayBPN = ({
         data: "/data/batas_kecamatan.geojson",
         generateId: true,
       });
-      const kecFilter = [
-        "in",
-        "WADMKC",
-        "PURWOREJO",
-        "GADINGREJO",
-        "BUGUL KIDUL",
-      ];
       map.current.addLayer({
         id: "batas_kecamatan_fill",
         type: "fill",
         source: "batas_kecamatan",
-        filter: kecFilter,
         paint: {
           "fill-color": "#8b5cf6",
           "fill-opacity": [
@@ -1797,7 +1850,6 @@ const MapDisplayBPN = ({
         id: "batas_kecamatan_line",
         type: "line",
         source: "batas_kecamatan",
-        filter: kecFilter,
         paint: {
           "line-color": [
             "case",
@@ -1819,7 +1871,6 @@ const MapDisplayBPN = ({
         id: "batas_kecamatan_label",
         type: "symbol",
         source: "batas_kecamatan",
-        filter: kecFilter,
         layout: {
           "text-field": ["get", "WADMKC"],
           "text-size": 14,
@@ -1899,18 +1950,10 @@ const MapDisplayBPN = ({
         data: "/data/batas_wilayah.geojson",
         generateId: true,
       });
-      const kelKecFilter = [
-        "in",
-        "WADMKC",
-        "PURWOREJO",
-        "GADINGREJO",
-        "BUGUL KIDUL",
-      ];
       map.current.addLayer({
         id: "batas_wilayah_fill",
         type: "fill",
         source: "batas_wilayah",
-        filter: kelKecFilter,
         paint: {
           "fill-color": "#10b981",
           "fill-opacity": [
@@ -1925,7 +1968,6 @@ const MapDisplayBPN = ({
         id: "batas_wilayah_line",
         type: "line",
         source: "batas_wilayah",
-        filter: kelKecFilter,
         paint: {
           "line-color": "#10b981",
           "line-width": [
@@ -1941,7 +1983,6 @@ const MapDisplayBPN = ({
         id: "batas_wilayah_label",
         type: "symbol",
         source: "batas_wilayah",
-        filter: kelKecFilter,
         layout: {
           "text-field": ["get", "NAMOBJ"],
           "text-size": 12,
@@ -2419,6 +2460,15 @@ const MapDisplayBPN = ({
       updateCompassBearing(map.current?.getBearing() || 0);
     };
     map.current.on("rotate", handleMapRotate);
+    const updatePopupAnchor = () => {
+      const selected = selectedPopupAnchorRef.current;
+      if (!selected || !map.current) return;
+      const point = map.current.project([selected.longitude, selected.latitude]);
+      window.dispatchEvent(new CustomEvent("bhumi:popup-anchor-update", {
+        detail: { assetId: selected.assetId, x: point.x, y: point.y },
+      }));
+    };
+    map.current.on("move", updatePopupAnchor);
 
     return () => {
       // Remove popup FIRST before map to prevent race condition
@@ -2445,6 +2495,7 @@ const MapDisplayBPN = ({
         map.current.off("click", handleMapClick);
         map.current.off("mousemove", handleMouseMove);
         map.current.off("rotate", handleMapRotate);
+        map.current.off("move", updatePopupAnchor);
         map.current.remove();
         map.current = null;
       }
@@ -2684,6 +2735,7 @@ const MapDisplayBPN = ({
 
       if (isAsset3dMode && cesiumMapRef.current) {
         cesiumMapRef.current.focus({
+          assetId: targetAsset?.id_aset || targetAsset?.id,
           longitude: lngLat[0],
           latitude: lngLat[1],
         });
@@ -2768,7 +2820,7 @@ const MapDisplayBPN = ({
             String(candidate?.id_model_3d) === String(location.modelId),
         ) || null
       : null;
-    const selectFocusedAsset = () => {
+    const selectFocusedAsset = (popupAnchor = null) => {
       if (!location || !targetAsset) return;
       closeMapPopup();
       onFeatureClickRef.current?.(
@@ -2776,15 +2828,20 @@ const MapDisplayBPN = ({
           ? {
               ...targetAsset,
               popup_context: "3d",
+              ...(popupAnchor ? { popup_anchor: popupAnchor } : {}),
               active_model_3d: targetModel,
             }
-          : { ...targetAsset, popup_context: "3d" },
+          : {
+              ...targetAsset,
+              popup_context: "3d",
+              ...(popupAnchor ? { popup_anchor: popupAnchor } : {}),
+            },
       );
     };
 
     if (isAsset3dMode && cesiumMapRef.current) {
       const focused = cesiumMapRef.current.focus(location);
-      selectFocusedAsset();
+      selectFocusedAsset(cesiumMapRef.current.getPopupAnchor?.());
       return focused;
     }
     if (!map.current) return false;
@@ -2810,11 +2867,18 @@ const MapDisplayBPN = ({
     const modelLocation = model
       ? resolveModelOffsetLocation(model)
       : null;
+    const footprintCenter = getGeometryBoundsCenter(targetAsset?.building_footprint);
     const longitude = Number(
-      location?.longitude ?? modelLocation?.longitude ?? fallbackCoords?.[0],
+      footprintCenter?.[0]
+        ?? location?.longitude
+        ?? modelLocation?.longitude
+        ?? fallbackCoords?.[0],
     );
     const latitude = Number(
-      location?.latitude ?? modelLocation?.latitude ?? fallbackCoords?.[1],
+      footprintCenter?.[1]
+        ?? location?.latitude
+        ?? modelLocation?.latitude
+        ?? fallbackCoords?.[1],
     );
     if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return false;
     const targetZoom = Math.min(
@@ -2829,7 +2893,13 @@ const MapDisplayBPN = ({
       duration: 1200,
       essential: true,
     });
-    selectFocusedAsset();
+    selectedPopupAnchorRef.current = {
+      assetId: targetAsset?.id_aset || targetAsset?.id,
+      longitude,
+      latitude,
+    };
+    const projectedCenter = map.current.project([longitude, latitude]);
+    selectFocusedAsset({ x: projectedCenter.x, y: projectedCenter.y });
     return true;
   }, [detailedModels3d, isAsset3dMode, roleAssets]);
 
@@ -2939,6 +3009,20 @@ const MapDisplayBPN = ({
       analysisPointCount={analysisPoints.length}
       onAnalysisToolChange={changeAnalysisTool}
       onClearAnalysis={clearAnalysis}
+      shadowEnabled={shadowAnalysis.enabled}
+      shadowDate={shadowAnalysis.date}
+      shadowMinutes={shadowAnalysis.minutes}
+      onShadowEnabledChange={(enabled) =>
+        setShadowAnalysis((current) => ({ ...current, enabled }))}
+      onShadowDateChange={(date) =>
+        setShadowAnalysis((current) => ({ ...current, date }))}
+      onShadowMinutesChange={(minutes) =>
+        setShadowAnalysis((current) => ({ ...current, minutes }))}
+      onUseCurrentShadowTime={() =>
+        setShadowAnalysis((current) => ({
+          ...current,
+          ...getJakartaDateTimeParts(),
+        }))}
     />
   );
 
@@ -3218,7 +3302,8 @@ const MapDisplayBPN = ({
               buildingGeoJson={assetBuildingGeoJson}
               polygonGeoJson={bidangTanahGeoJson}
               pointGeoJson={visibleDotGeoJson}
-              detailedModels={detailedModels3d}
+              detailedModels={allDetailedModels3d}
+              visibleLocationIds={renderedVisible3dLocationIds}
               showMarkers={effectiveShowMarkers}
               showPolygons={effectiveShowPolygons}
               onFeatureClick={onFeatureClick}
@@ -3229,6 +3314,8 @@ const MapDisplayBPN = ({
               basemapOption={basemapOptions.find((option) => option.id === activeBasemap)}
               analysisTool={analysisTool}
               analysisPoints={analysisPoints}
+              shadowEnabled={shadowAnalysis.enabled}
+              shadowDateTime={shadowDateTime?.getTime() ?? null}
               onAnalysisClick={({ longitude, latitude, asset }) => {
                 handleAnalysisClick(
                   { lngLat: { lng: longitude, lat: latitude } },

@@ -14,6 +14,9 @@ import Aset3dCatalog from "./Aset3dCatalog.js";
 import Aset2dCatalog from "./Aset2dCatalog.js";
 import AsetModel3dObject from "./AsetModel3dObject.js";
 import Orthophoto from "./Orthophoto.js";
+import BuildingDocumentation from "./BuildingDocumentation.js";
+import AsetNjopHistory from "./AsetNjopHistory.js";
+import BuildingOccupant from "./BuildingOccupant.js";
 
 // Define associations here to avoid circular dependencies
 // User has many Aset (created_by)
@@ -83,6 +86,18 @@ SewaAset.belongsTo(Aset, {
 
 Aset.hasMany(SewaAset, {
   foreignKey: "id_aset",
+  as: "sewas",
+});
+
+SewaAset.belongsTo(Aset3dCatalog, {
+  foreignKey: "kode_3d",
+  targetKey: "kode_3d",
+  as: "bangunan",
+});
+
+Aset3dCatalog.hasMany(SewaAset, {
+  foreignKey: "kode_3d",
+  sourceKey: "kode_3d",
   as: "sewas",
 });
 
@@ -257,6 +272,53 @@ User.hasMany(Aset3dCatalog, {
   as: "createdCatalogs3d",
 });
 
+Aset3dCatalog.hasMany(BuildingDocumentation, {
+  foreignKey: "kode_3d",
+  sourceKey: "kode_3d",
+  as: "documentation",
+  onDelete: "CASCADE",
+});
+
+Aset.hasMany(AsetNjopHistory, {
+  foreignKey: "id_aset",
+  as: "njopHistory",
+  onDelete: "CASCADE",
+});
+
+AsetNjopHistory.belongsTo(Aset, {
+  foreignKey: "id_aset",
+  as: "aset",
+});
+
+Aset3dCatalog.hasMany(BuildingOccupant, {
+  foreignKey: "kode_3d",
+  sourceKey: "kode_3d",
+  as: "occupants",
+  onDelete: "CASCADE",
+});
+
+BuildingOccupant.belongsTo(Aset3dCatalog, {
+  foreignKey: "kode_3d",
+  targetKey: "kode_3d",
+  as: "building",
+});
+
+BuildingDocumentation.belongsTo(Aset3dCatalog, {
+  foreignKey: "kode_3d",
+  targetKey: "kode_3d",
+  as: "building",
+});
+
+BuildingDocumentation.belongsTo(User, {
+  foreignKey: "uploaded_by",
+  as: "uploader",
+});
+
+User.hasMany(BuildingDocumentation, {
+  foreignKey: "uploaded_by",
+  as: "uploadedBuildingDocumentation",
+});
+
 Orthophoto.belongsTo(User, {
   foreignKey: "created_by",
   as: "creator",
@@ -284,4 +346,7 @@ export {
   Aset3dCatalog,
   AsetModel3dObject,
   Orthophoto,
+  BuildingDocumentation,
+  AsetNjopHistory,
+  BuildingOccupant,
 };

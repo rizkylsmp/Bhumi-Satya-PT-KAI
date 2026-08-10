@@ -178,6 +178,15 @@ const Aset = sequelize.define(
       allowNull: true,
       comment: "Kantor, Sekolah, Lahan Kosong, Disewa Pihak Ketiga, dll",
     },
+    lintas: { type: DataTypes.STRING(100), allowNull: true },
+    km_hm: { type: DataTypes.STRING(50), allowNull: true },
+    dusun: { type: DataTypes.STRING(100), allowNull: true },
+    kabupaten_kota: { type: DataTypes.STRING(100), allowNull: true },
+    provinsi: { type: DataTypes.STRING(100), allowNull: true },
+    easting: { type: DataTypes.DECIMAL(15, 3), allowNull: true },
+    northing: { type: DataTypes.DECIMAL(15, 3), allowNull: true },
+    coordinate_crs: { type: DataTypes.STRING(50), allowNull: true },
+    penguasaan: { type: DataTypes.STRING(100), allowNull: true },
 
     // ========== IDENTIFIKASI SPASIAL ==========
     nib: {
@@ -334,6 +343,7 @@ const Aset = sequelize.define(
       allowNull: true,
       comment: "NJOP bangunan hasil pemetaan (rupiah)",
     },
+    njop_tahun: { type: DataTypes.INTEGER, allowNull: true },
     pbb_pemetaan: {
       type: DataTypes.DECIMAL(20, 2),
       allowNull: true,

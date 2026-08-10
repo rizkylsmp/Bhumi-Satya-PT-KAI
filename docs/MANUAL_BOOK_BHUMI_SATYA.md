@@ -1,12 +1,12 @@
 # MANUAL BOOK APLIKASI BHUMI SATYA
 
-**Sistem Informasi Pengelolaan Aset Tanah dan Digital Twin Kota Pasuruan**
+**Sistem Informasi Pengelolaan Aset Tanah dan Digital Twin**
 
 | Informasi Dokumen | Keterangan |
 |---|---|
 | Nama aplikasi | Bhumi Satya |
 | Jenis dokumen | Manual Book / Panduan Pengguna |
-| Instansi | Pemerintah Kota Pasuruan |
+| Instansi | Organisasi Pengelola Aset |
 | Tanggal penyusunan | 6 Agustus 2026 |
 | Status dokumen | Draf siap dipindahkan ke Microsoft Word |
 
@@ -69,7 +69,7 @@
 
 ## 1.1 Tentang Bhumi Satya
 
-Bhumi Satya adalah aplikasi pengelolaan aset tanah Pemerintah Kota Pasuruan. Aplikasi menggabungkan data identitas, legal, fisik, Kartu Inventaris Barang (KIB), administratif, pajak, data spasial 2D, dan model 3D dalam satu sistem.
+Bhumi Satya adalah aplikasi pengelolaan aset tanah organisasi. Aplikasi menggabungkan data identitas, legal, fisik, Kartu Inventaris Barang (KIB), administratif, pajak, data spasial 2D, dan model 3D dalam satu sistem.
 
 Fungsi utama aplikasi meliputi:
 

@@ -6,6 +6,7 @@ import {
   MagnifyingGlassIcon,
   CaretDownIcon,
   BuildingsIcon,
+  PolygonIcon,
   PlusIcon,
   TrashIcon,
   FileIcon,
@@ -17,7 +18,11 @@ import {
   CalendarIcon,
 } from "@phosphor-icons/react";
 import { formatCurrency, formatNumber } from "../../utils/format";
-import { asetService, uploadService } from "../../services/api";
+import {
+  aset3dCatalogService,
+  asetService,
+  uploadService,
+} from "../../services/api";
 import { normalizePolygonToGeometry } from "../../utils/geojsonExport";
 import SewaPolygonMap from "./SewaPolygonMap";
 
@@ -96,14 +101,20 @@ export default function SewaFormModal({
   onSubmit,
   initialData = null,
   isLoading = false,
+  defaultCategory = "Tanah",
 }) {
   const isEdit = !!initialData;
 
   const [form, setForm] = useState({
     id_aset: "",
+    kategori_sewa: defaultCategory,
+    kode_3d: "",
     nama_aset: "",
     lokasi_aset: "",
     no_lot: "",
+    nama_penyewa: "",
+    nomor_kontrak: "",
+    nilai_estimasi: "",
     tanggal_mulai: "",
     tanggal_berakhir: "",
     nilai_sewa: "",
@@ -126,19 +137,45 @@ export default function SewaFormModal({
   const fetchAsetList = useCallback(async (search = "") => {
     setLoadingAset(true);
     try {
-      const res = await asetService.getAll({
-        limit: 50,
-        ...(search && { search }),
-        sort: "kode_aset",
-        order: "ASC",
-      });
-      setAsetList(res.data?.data || []);
+      if (form.kategori_sewa === "Bangunan") {
+        const res = await aset3dCatalogService.list({
+          page: 1,
+          limit: 50,
+          ...(search && { search }),
+          sort: "building_name",
+          order: "ASC",
+          catalog_status: "active",
+        });
+        setAsetList(
+          (res.data?.data || []).map((building) => ({
+            ...building.asset,
+            id_aset: building.asset?.id_aset,
+            kode_aset: building.kode_3d,
+            kode_3d: building.kode_3d,
+            nama_aset: building.building_name || building.kode_3d,
+            lokasi: building.asset?.lokasi || "",
+            nilai_aset:
+              building.asset?.njop_bangunan_pemetaan ||
+              building.asset?.nilai_aset ||
+              0,
+            polygon_bidang: building.asset?.polygon_bidang || null,
+          })),
+        );
+      } else {
+        const res = await asetService.getAll({
+          limit: 50,
+          ...(search && { search }),
+          sort: "kode_aset",
+          order: "ASC",
+        });
+        setAsetList(res.data?.data || []);
+      }
     } catch {
       setAsetList([]);
     } finally {
       setLoadingAset(false);
     }
-  }, []);
+  }, [form.kategori_sewa]);
 
   useEffect(() => {
     if (isOpen && !isEdit) {
@@ -176,6 +213,7 @@ export default function SewaFormModal({
     setForm((prev) => ({
       ...prev,
       id_aset: aset.id_aset,
+      kode_3d: form.kategori_sewa === "Bangunan" ? aset.kode_3d : "",
       nama_aset: aset.nama_aset || aset.kode_aset || "",
       lokasi_aset: aset.lokasi || "",
       nilai_sewa: nilaiSewaPerPeriode || "",
@@ -267,9 +305,14 @@ export default function SewaFormModal({
         initialData.polygon_sewa || getAsetPolygonGeometry(initialData.aset);
       setForm({
         id_aset: initialData.id_aset || "",
+        kategori_sewa: initialData.kategori_sewa || "Tanah",
+        kode_3d: initialData.kode_3d || "",
         nama_aset: initialData.nama_aset || "",
         lokasi_aset: initialData.lokasi_aset || "",
         no_lot: initialData.no_lot || "",
+        nama_penyewa: initialData.nama_penyewa || "",
+        nomor_kontrak: initialData.nomor_kontrak || "",
+        nilai_estimasi: initialData.nilai_estimasi || "",
         tanggal_mulai: initialData.tanggal_mulai || "",
         tanggal_berakhir: initialData.tanggal_berakhir || "",
         nilai_sewa: initialData.nilai_sewa || "",
@@ -294,9 +337,14 @@ export default function SewaFormModal({
     } else {
       setForm({
         id_aset: "",
+        kategori_sewa: defaultCategory,
+        kode_3d: "",
         nama_aset: "",
         lokasi_aset: "",
         no_lot: "",
+        nama_penyewa: "",
+        nomor_kontrak: "",
+        nilai_estimasi: "",
         tanggal_mulai: "",
         tanggal_berakhir: "",
         nilai_sewa: "",
@@ -311,7 +359,7 @@ export default function SewaFormModal({
     }
     setDokumenFiles([]);
     setFotoSewaFiles([]);
-  }, [initialData, isOpen]);
+  }, [defaultCategory, initialData, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -375,6 +423,7 @@ export default function SewaFormModal({
       tanggal_mulai: form.tanggal_mulai || null,
       tanggal_berakhir: form.tanggal_berakhir || null,
       nilai_sewa: nilaiSewaPerPeriode,
+      nilai_estimasi: Number(form.nilai_estimasi) || null,
       periode_bayar: form.periode_bayar || "Tahunan",
       dokumen_pendukung: allDokumen.length > 0 ? allDokumen : null,
       foto_sewa: allFotoSewa.length > 0 ? allFotoSewa : null,
@@ -420,11 +469,51 @@ export default function SewaFormModal({
           {/* Pilih Aset */}
           <fieldset className="border border-border rounded-xl p-4">
             <legend className="text-sm font-medium text-text-secondary px-2">
-              Pilih Aset
+              Kategori dan Objek Sewa
             </legend>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: "Tanah", icon: PolygonIcon },
+                { value: "Bangunan", icon: BuildingsIcon },
+              ].map((category) => {
+                const CategoryIcon = category.icon;
+                const active = form.kategori_sewa === category.value;
+                return (
+                  <button
+                    key={category.value}
+                    type="button"
+                    disabled={isEdit}
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...prev,
+                        kategori_sewa: category.value,
+                        id_aset: "",
+                        kode_3d: "",
+                        nama_aset: "",
+                        lokasi_aset: "",
+                        nilai_sewa: "",
+                        polygon_sewa: null,
+                      }));
+                      setSelectedAset(null);
+                      setAsetList([]);
+                      setAsetSearch("");
+                      setGeojsonFileName("");
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                      active
+                        ? "border-accent bg-accent text-surface"
+                        : "border-border bg-surface-secondary text-text-secondary hover:border-accent/40"
+                    }`}
+                  >
+                    <CategoryIcon size={18} weight={active ? "fill" : "duotone"} />
+                    {category.value}
+                  </button>
+                );
+              })}
+            </div>
             <div className="mt-2" ref={dropdownRef}>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                Aset <span className="text-red-500">*</span>
+                {form.kategori_sewa} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <button
@@ -445,7 +534,7 @@ export default function SewaFormModal({
                     </span>
                   ) : (
                     <span className="text-text-muted">
-                      Cari dan pilih aset...
+                      Cari dan pilih {form.kategori_sewa.toLowerCase()}...
                     </span>
                   )}
                   <CaretDownIcon
@@ -479,7 +568,7 @@ export default function SewaFormModal({
                         </div>
                       ) : asetList.length === 0 ? (
                         <div className="px-4 py-6 text-center text-sm text-text-muted">
-                          Tidak ada aset ditemukan
+                          Tidak ada {form.kategori_sewa.toLowerCase()} ditemukan
                         </div>
                       ) : (
                         asetList.map((aset) => (
@@ -503,6 +592,11 @@ export default function SewaFormModal({
                                 </span>
                                 <span className="text-sm font-medium text-text-primary truncate">
                                   {aset.nama_aset}
+                                </span>
+                                <span className="font-mono text-[9px] font-semibold text-text-muted">
+                                  {form.kategori_sewa === "Bangunan"
+                                    ? `Bidang ID ${aset.id_aset ?? "-"}`
+                                    : `ID ${aset.id_aset ?? aset.id ?? "-"}`}
                                 </span>
                               </div>
                               {aset.lokasi && (
@@ -530,6 +624,7 @@ export default function SewaFormModal({
                     setForm((prev) => ({
                       ...prev,
                       id_aset: "",
+                      kode_3d: "",
                       nama_aset: "",
                       lokasi_aset: "",
                       nilai_sewa: "",
@@ -554,7 +649,7 @@ export default function SewaFormModal({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {selectedAset.kode_aset && (
                     <div>
-                      <span className="text-text-muted">Kode Aset:</span>{" "}
+                      <span className="text-text-muted">Kode Bangunan:</span>{" "}
                       <span className="font-mono font-medium text-text-primary">
                         {selectedAset.kode_aset}
                       </span>
@@ -737,6 +832,22 @@ export default function SewaFormModal({
                   className={inputClass}
                   placeholder="Nomor LOT sewa"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-text-secondary">Penyewa</label>
+                  <input type="text" name="nama_penyewa" value={form.nama_penyewa} onChange={handleChange} className={inputClass} placeholder="Nama penyewa/instansi" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-text-secondary">No. Kontrak</label>
+                  <input type="text" name="nomor_kontrak" value={form.nomor_kontrak} onChange={handleChange} className={inputClass} placeholder="Nomor kontrak sewa" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-text-secondary">Nilai Estimasi (Rp)</label>
+                <input type="number" min="0" step="0.01" name="nilai_estimasi" value={form.nilai_estimasi} onChange={handleChange} className={inputClass} placeholder="0" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -146,13 +146,13 @@ const MODEL_CONVERSION_CONFIG = {
 };
 
 const DETAIL_NAV_ITEMS = [
-  { id: "detail-identitas-aset", label: "Identitas" },
-  { id: "detail-data-legal", label: "Legal" },
-  { id: "detail-data-fisik", label: "Fisik" },
-  { id: "detail-data-kib", label: "KIB" },
-  { id: "detail-data-administratif", label: "Administratif" },
-  { id: "detail-data-spasial", label: "Spasial" },
-  { id: "detail-data-bangunan-3d", label: "3D" },
+  { id: "detail-identitas-aset", label: "Identitas", icon: ClipboardTextIcon },
+  { id: "detail-data-legal", label: "Legal", icon: ScalesIcon },
+  { id: "detail-data-fisik", label: "Fisik", icon: MapPinIcon },
+  { id: "detail-data-kib", label: "KIB", icon: FolderOpenIcon },
+  { id: "detail-data-administratif", label: "Administratif", icon: CurrencyDollarIcon },
+  { id: "detail-data-spasial", label: "Spasial", icon: MapTrifoldIcon },
+  { id: "detail-data-bangunan-3d", label: "Bangunan 3D", icon: BuildingsIcon },
 ];
 
 const getStatusHukumConfig = (statusHukum) => {
@@ -161,8 +161,8 @@ const getStatusHukumConfig = (statusHukum) => {
 
 // Sub-components - moved outside to prevent re-creation on every render
 const InfoItem = ({ label, value, icon: Icon, highlight = false }) => (
-  <div className="min-w-0 rounded-xl border border-border/80 bg-surface px-3.5 py-3">
-    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-text-muted">
+  <div className="group min-w-0 rounded-xl border border-border/70 bg-surface px-3.5 py-3 transition-colors hover:border-accent/30 hover:bg-accent/[0.025]">
+    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">
       {Icon && <Icon size={12} />}
       {label}
     </p>
@@ -187,15 +187,15 @@ const Section = ({ title, icon: Icon, children, columns = 2, hidden = false }) =
       role="tabpanel"
       aria-labelledby={`tab-${sectionId}`}
       hidden={hidden}
-      className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm"
+      className="overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm shadow-slate-950/[0.03]"
     >
-      <h3 className="flex items-center gap-2 border-b border-border bg-surface-secondary/70 px-4 py-3.5 text-xs font-black uppercase tracking-[0.1em] text-text-primary">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent">
+      <h3 className="flex items-center gap-2.5 border-b border-border/70 bg-surface-secondary/55 px-4 py-3.5 text-xs font-black uppercase tracking-[0.1em] text-text-primary sm:px-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/15 bg-accent/10 text-accent">
           <Icon size={17} weight="duotone" />
         </span>
         {title}
       </h3>
-      <div className={`grid ${columnClass} gap-3 p-4`}>
+      <div className={`grid ${columnClass} gap-3 p-3 sm:p-5`}>
         {children}
       </div>
     </section>
@@ -222,10 +222,30 @@ export default function AssetViewModal({
   const [downloadingModel, setDownloadingModel] = useState(null);
   const [deletingModelId, setDeletingModelId] = useState(null);
   const downloadMenuRef = useRef(null);
+  const closeButtonRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) setActiveDetailTab(DETAIL_NAV_ITEMS[0].id);
   }, [asset?.id_aset, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, onClose]);
 
   const handleDetailTabKeyDown = (event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -441,25 +461,33 @@ export default function AssetViewModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
       {/* Overlay */}
       <div
-        className="motion-backdrop fixed inset-0 bg-accent/60 backdrop-blur-sm"
+        aria-hidden="true"
+        className="motion-backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-[3px] dark:bg-black/80"
         onClick={onClose}
       />
 
       {/* Modal Container */}
-      <div className="motion-dialog-enter relative flex h-full w-full max-w-[96rem] flex-col overflow-hidden border-border bg-surface shadow-2xl md:h-auto md:max-h-[calc(100vh-32px)] md:rounded-2xl md:border">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="asset-detail-title"
+        aria-describedby="asset-detail-description"
+        className="motion-dialog-enter relative flex h-[100dvh] w-full max-w-[88rem] flex-col overflow-hidden border-border bg-surface shadow-2xl shadow-slate-950/30 md:h-[calc(100dvh-2rem)] md:max-h-[56rem] md:rounded-3xl md:border"
+      >
         {/* Header */}
-        <div className="shrink-0 border-b border-border bg-surface px-4 py-4 md:px-6">
-          <div className="flex items-start justify-between gap-4">
+        <div className="relative shrink-0 overflow-visible border-b border-border/80 bg-surface px-4 py-4 sm:px-5 md:px-6">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-r from-accent/[0.08] via-transparent to-transparent" />
+          <div className="relative flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex min-w-0 items-start gap-3 md:gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-surface shadow-md shadow-accent/20 md:h-14 md:w-14">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-surface shadow-lg shadow-accent/20 sm:h-12 sm:w-12 md:h-14 md:w-14">
                 <BuildingsIcon size={26} weight="fill" />
               </div>
               <div className="min-w-0">
-                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.12em] text-accent">
-                  Data Lengkap Aset · {asset.kode_aset}
+                <p id="asset-detail-description" className="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-accent">
+                  Detail Lengkap · {asset.kode_aset}
                 </p>
-                <h2 className="truncate text-lg font-black text-text-primary md:text-xl">{asset.nama_aset}</h2>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+                <h2 id="asset-detail-title" className="line-clamp-2 text-base font-black leading-tight text-text-primary sm:text-lg md:text-xl">{asset.nama_aset}</h2>
+                <div className="mt-2 hidden flex-wrap items-center gap-2 sm:flex">
                   <span
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusConfig.bg} ${statusConfig.text}`}
                   >
@@ -482,19 +510,21 @@ export default function AssetViewModal({
                 </div>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               {(onDownloadPdf || onDownloadGeojson) && (
                 <div className="relative" ref={downloadMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowDownloadMenu((value) => !value)}
-                    className="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-secondary px-3 text-xs font-bold text-text-secondary transition hover:border-accent hover:text-accent"
+                    aria-expanded={showDownloadMenu}
+                    aria-haspopup="menu"
+                    className="flex h-9 items-center gap-2 rounded-xl border border-border bg-surface px-2.5 text-xs font-bold text-text-secondary shadow-sm transition hover:border-accent hover:text-accent focus-visible:ring-2 focus-visible:ring-accent sm:px-3"
                   >
                     <DownloadSimpleIcon size={16} weight="bold" />
-                    Unduh
+                    <span className="hidden sm:inline">Unduh</span>
                   </button>
                   {showDownloadMenu && (
-                    <div className="absolute right-0 top-full z-[9999] mt-2 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 text-text-primary">
+                    <div role="menu" className="absolute right-0 top-full z-[9999] mt-2 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 text-text-primary shadow-xl shadow-slate-950/15">
                       {onDownloadPdf && (
                         <button
                           type="button"
@@ -531,16 +561,18 @@ export default function AssetViewModal({
                     onClose();
                     onEdit(asset.id_aset);
                   }}
-                  className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-surface transition hover:bg-accent/90"
+                  className="flex h-9 items-center gap-2 rounded-xl bg-accent px-2.5 text-xs font-bold text-surface shadow-sm transition hover:bg-accent/90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:px-3"
                 >
                   <PencilSimpleIcon size={16} weight="bold" />
-                  Edit
+                  <span className="hidden sm:inline">Edit</span>
                 </button>
               )}
               <button
+                ref={closeButtonRef}
+                type="button"
                 onClick={onClose}
                 aria-label="Tutup detail"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-text-muted transition hover:bg-surface-secondary hover:text-text-primary"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-text-muted transition hover:border-border hover:bg-surface-secondary hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <XIcon size={20} weight="bold" />
               </button>
@@ -548,15 +580,16 @@ export default function AssetViewModal({
           </div>
         </div>
 
-        <nav aria-label="Navigasi data lengkap" className="shrink-0 overflow-x-auto border-b border-border bg-surface px-4 py-2 md:px-6">
+        <nav aria-label="Navigasi data lengkap" className="shrink-0 overflow-x-auto border-b border-border/80 bg-surface/95 px-3 py-2.5 backdrop-blur sm:px-5 md:px-6">
           <div
             role="tablist"
-            aria-label="Bagian data aset"
+            aria-label="Bagian data bangunan"
             onKeyDown={handleDetailTabKeyDown}
-            className="flex min-w-max items-center gap-1"
+            className="flex min-w-max items-center gap-1.5"
           >
-            {DETAIL_NAV_ITEMS.map((item) => (
-              <button
+            {DETAIL_NAV_ITEMS.map((item) => {
+              const ItemIcon = item.icon;
+              return <button
                 type="button"
                 key={item.id}
                 id={`tab-${item.id}`}
@@ -565,35 +598,37 @@ export default function AssetViewModal({
                 aria-selected={activeDetailTab === item.id}
                 tabIndex={activeDetailTab === item.id ? 0 : -1}
                 onClick={() => setActiveDetailTab(item.id)}
-                className={`rounded-lg px-3 py-2 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition focus-visible:ring-2 focus-visible:ring-accent ${
                   activeDetailTab === item.id
-                    ? "bg-accent text-surface"
-                    : "text-text-secondary hover:bg-accent/10 hover:text-accent"
+                    ? "border-accent bg-accent text-surface shadow-sm shadow-accent/20"
+                    : "border-transparent text-text-secondary hover:border-accent/15 hover:bg-accent/10 hover:text-accent"
                 }`}
               >
+                <ItemIcon size={14} weight={activeDetailTab === item.id ? "fill" : "duotone"} />
                 {item.label}
               </button>
-            ))}
+            })}
           </div>
         </nav>
 
         {/* Content */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-secondary/50 p-4 md:p-6">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface-secondary/45 p-3 sm:p-5 md:p-6">
+          <div className="mx-auto grid max-w-[84rem] grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-4">
             {/* Main Content */}
-            <div className={`${activeDetailTab === "detail-identitas-aset" ? "xl:col-span-3" : "xl:col-span-4"} space-y-6`}>
-              {/* Identitas Aset */}
+            <div className={`${activeDetailTab === "detail-identitas-aset" ? "xl:col-span-3" : "xl:col-span-4"} space-y-4 lg:space-y-6`}>
+              {/* Identitas */}
               <Section
-                title="Identitas Aset"
+                title="Identitas & Lokasi"
                 icon={ClipboardTextIcon}
                 columns={3}
                 hidden={activeDetailTab !== "detail-identitas-aset"}
               >
-                <InfoItem label="Kode Aset" value={asset.kode_aset} highlight />
-                <InfoItem label="Kode Bidang 2D" value={asset.kode_2d} highlight />
-                <InfoItem label="Nama Aset" value={asset.nama_aset} highlight />
+                <InfoItem label="ID Primary Key" value={asset.id_aset ?? asset.id} highlight />
+                <InfoItem label="Kode Tanah" value={asset.kode_aset} highlight />
+                <InfoItem label="Kode Bidang" value={asset.kode_2d} highlight />
+                <InfoItem label="Nama Tanah" value={asset.nama_aset} highlight />
                 <InfoItem label="Kode BMD" value={asset.kode_bmd} />
-                <InfoItem label="Jenis Aset" value={asset.jenis_aset} />
+                <InfoItem label="Jenis Data" value={asset.jenis_aset} />
                 <InfoItem label="Asal Data (audit)" value={asset.sumber} />
                 <InfoItem
                   label="Status Rekonsiliasi"
@@ -715,7 +750,7 @@ export default function AssetViewModal({
                 hidden={activeDetailTab !== "detail-data-administratif"}
               >
                 <InfoItem
-                  label="Nilai Aset"
+                  label="Nilai Perolehan"
                   value={formatOptionalCurrency(asset.nilai_aset)}
                   highlight
                 />
@@ -864,7 +899,7 @@ export default function AssetViewModal({
                 <div id="detail-data-spasial" role="tabpanel" aria-labelledby="tab-detail-data-spasial" className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center">
                   <MapTrifoldIcon size={30} className="mx-auto text-text-muted" />
                   <p className="mt-3 text-sm font-bold text-text-primary">Data spasial belum tersedia</p>
-                  <p className="mt-1 text-xs text-text-muted">Tambahkan koordinat atau polygon bidang melalui halaman edit aset.</p>
+                  <p className="mt-1 text-xs text-text-muted">Tambahkan koordinat atau polygon bidang melalui halaman edit data.</p>
                 </div>
               )}
 
@@ -1063,13 +1098,13 @@ export default function AssetViewModal({
             </div>
 
             {/* Sidebar - 1 column */}
-            {activeDetailTab === "detail-identitas-aset" && <div className="space-y-6">
-              {/* Nilai Aset Card */}
-              <div className="bg-linear-to-br from-emerald-500 to-emerald-600 rounded-xl p-5 text-white">
+            {activeDetailTab === "detail-identitas-aset" && <aside aria-label="Ringkasan data" className="space-y-4 lg:space-y-5">
+              {/* Ringkasan nilai */}
+              <div className="rounded-2xl bg-linear-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg shadow-emerald-900/10">
                 <div className="flex items-center gap-2 mb-3">
                   <CurrencyDollarIcon size={20} weight="bold" />
                   <span className="text-xs font-semibold uppercase tracking-wide opacity-80">
-                    Nilai Aset
+                    Ringkasan Nilai
                   </span>
                 </div>
                 <div className="space-y-3">
@@ -1103,7 +1138,7 @@ export default function AssetViewModal({
               </div>
 
               {/* Quick Info */}
-              <div className="bg-surface-secondary rounded-xl p-4 space-y-4">
+              <div className="space-y-4 rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
                 <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide">
                   Ringkasan
                 </h4>
@@ -1130,7 +1165,7 @@ export default function AssetViewModal({
               </div>
 
               {/* Dokumentasi */}
-              <div className="bg-surface-secondary rounded-xl p-4 space-y-4">
+              <div className="space-y-4 rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
                 <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide flex items-center gap-2">
                   <FolderOpenIcon size={14} />
                   Dokumentasi
@@ -1151,7 +1186,7 @@ export default function AssetViewModal({
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-text-primary">
-                          Foto Aset
+                          Foto
                         </p>
                         <p className="text-xs text-text-muted">
                           Klik untuk melihat
@@ -1205,7 +1240,7 @@ export default function AssetViewModal({
 
               {/* Keterangan */}
               {asset.keterangan && (
-                <div className="bg-surface-secondary rounded-xl p-4">
+                <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
                   <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">
                     Keterangan
                   </h4>
@@ -1216,31 +1251,30 @@ export default function AssetViewModal({
               )}
 
               {asset.notes && (
-                <div className="bg-surface-secondary rounded-xl p-4">
+                <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
                   <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">
                     Notes KIB
                   </h4>
                   <p className="text-sm text-text-secondary">{asset.notes}</p>
                 </div>
               )}
-            </div>}
+            </aside>}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-surface-secondary border-t border-border flex items-center justify-between shrink-0">
-          <p className="text-xs text-text-muted">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 bg-surface px-4 py-3 sm:px-6">
+          <p className="min-w-0 truncate text-[11px] text-text-muted sm:text-xs">
             ID: {asset.id_aset} • Terakhir diperbarui:{" "}
             {formatDate(asset.updated_at || asset.created_at)}
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
-            >
-              Tutup
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-xl border border-border bg-surface-secondary px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:border-accent hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

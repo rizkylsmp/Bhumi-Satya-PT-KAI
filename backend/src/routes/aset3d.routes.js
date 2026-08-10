@@ -1,5 +1,5 @@
 import express from "express";
-import { Aset3dCatalogController } from "../controllers/index.js";
+import { Aset3dCatalogController, IntegratedAssetDataController } from "../controllers/index.js";
 import {
   authMiddleware,
   canViewAset,
@@ -16,6 +16,26 @@ router.get("/", canViewAset, Aset3dCatalogController.list);
 router.get("/export", canViewAset, Aset3dCatalogController.exportCsv);
 router.get("/candidates", canViewAset, Aset3dCatalogController.candidates);
 router.get("/:kode3d", canViewAset, Aset3dCatalogController.getByCode);
+router.get(
+  "/:kode3d/occupants",
+  permissionMiddleware(PERMISSIONS.ASET_UPDATE),
+  IntegratedAssetDataController.listOccupants,
+);
+router.post(
+  "/:kode3d/occupants",
+  permissionMiddleware(PERMISSIONS.ASET_UPDATE),
+  IntegratedAssetDataController.createOccupant,
+);
+router.put(
+  "/:kode3d/occupants/:occupantId",
+  permissionMiddleware(PERMISSIONS.ASET_UPDATE),
+  IntegratedAssetDataController.updateOccupant,
+);
+router.delete(
+  "/:kode3d/occupants/:occupantId",
+  permissionMiddleware(PERMISSIONS.ASET_UPDATE),
+  IntegratedAssetDataController.removeOccupant,
+);
 router.post(
   "/",
   permissionMiddleware(PERMISSIONS.ASET_UPDATE),

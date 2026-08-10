@@ -1,12 +1,282 @@
 export const changelogEntries = [
   {
-    id: "reactivate-rental-service",
-    date: "2026-08-07",
+    id: "keep-2d-parcels-visible-on-selection",
+    date: "2026-08-10",
+    type: "perbaikan",
+    title: "Mempertahankan bidang lain saat seleksi 2D",
+    summary:
+      "Memilih satu bidang pada peta 2D kini hanya menambahkan highlight tanpa menyembunyikan bidang lainnya.",
+    area: "Digital Twin",
+  },
+  {
+    id: "dark-mode-button-contrast",
+    date: "2026-08-09",
+    type: "perbaikan",
+    title: "Memperjelas tombol pada mode gelap",
+    summary:
+      "Teks dan ikon pada tombol aktif kini memakai warna kontras yang mengikuti tema sehingga tetap terbaca pada mode terang maupun gelap.",
+    area: "Tampilan",
+  },
+  {
+    id: "asset-detail-overlay-refresh",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Merapikan tampilan detail lengkap",
+    summary:
+      "Overlay detail lengkap kini lebih ringkas, responsif, mudah dipindai per kategori, dan nyaman digunakan melalui keyboard.",
+    area: "Digital Twin",
+  },
+  {
+    id: "integrated-map-popup-attributes",
+    date: "2026-08-09",
     type: "fitur",
+    title: "Mengintegrasikan 41 atribut pada popup peta",
+    summary:
+      "Popup peta kini menyatukan 41 atribut dan mengelompokkannya menurut menu Identitas/Lokasi, Fisik/Spasial, Legal, Bangunan, Penyewaan, Pajak, Penghuni, serta Media/Catatan.",
+    area: "Digital Twin",
+  },
+  {
+    id: "building-occupant-and-profile-input",
+    date: "2026-08-09",
+    type: "fitur",
+    title: "Menambahkan profil bangunan dan data penghuni",
+    summary:
+      "Pusat Data Bangunan kini menyediakan input jenis serta material bangunan dan pengelolaan data penghuni dengan usia yang dihitung otomatis.",
+    area: "Pusat Data Bangunan",
+  },
+  {
+    id: "building-popup-connector-line",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menghubungkan popup dengan bangunan yang dipilih",
+    summary:
+      "Klik manual kini menempatkan anchor tepat pada permukaan yang dipilih tanpa pemindaian tambahan, sementara fly-to tetap memakai pusat mesh renderable atau anchor klik yang tersimpan.",
+    area: "Digital Twin",
+  },
+  {
+    id: "separate-rental-navigation",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Memisahkan menu penyewaan",
+    summary:
+      "Menu Penyewaan kini berdiri sendiri tepat di bawah Kelola Bangunan sehingga tidak lagi bercampur dengan menu Kelola Tanah.",
+    area: "Navigasi",
+  },
+  {
+    id: "land-building-rental-categories",
+    date: "2026-08-09",
+    type: "fitur",
+    title: "Membagi penyewaan tanah dan bangunan",
+    summary:
+      "Pengelolaan dan portal penyewaan kini memiliki kategori Tanah dan Bangunan, termasuk pemilihan bidang atau bangunan 3D, daftar, permintaan, statistik, dan detailnya.",
+    area: "Penyewaan",
+  },
+  {
+    id: "restore-rental-services",
+    date: "2026-08-09",
+    type: "peningkatan",
     title: "Mengaktifkan kembali layanan penyewaan",
     summary:
-      "Menu penyewaan, portal masyarakat, pendaftaran akun publik, informasi sewa, serta pengajuan dan pengelolaan sewa kini tersedia kembali.",
+      "Menu dan dashboard penyewaan, portal masyarakat, pendaftaran akun publik, permintaan sewa, serta informasi objek tersedia kini dapat digunakan kembali.",
     area: "Penyewaan",
+  },
+  {
+    id: "building-photo-video-documentation",
+    date: "2026-08-09",
+    type: "fitur",
+    title: "Menambahkan dokumentasi foto dan video bangunan",
+    summary:
+      "Menu Dokumentasi kini menampilkan seluruh bangunan beserta jumlah foto dan video, lalu menyediakan aksi Kelola untuk mengimpor, melihat, mengunduh, atau menghapus media tanpa menambah ulang data bangunan.",
+    area: "Kelola Bangunan",
+  },
+  {
+    id: "building-import-without-lod-selection",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menyederhanakan impor bangunan 3D",
+    summary:
+      "Impor bangunan 3D di Pusat Data Bangunan kini cukup memilih file tanpa menentukan jenis Level of Detail.",
+    area: "Pusat Data Bangunan",
+  },
+  {
+    id: "remove-legacy-region-content",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menetralkan identitas wilayah lama",
+    summary:
+      "Label, kontak, bantuan, data contoh, dan batas wilayah lama telah dihapus agar sistem tidak lagi terikat pada identitas daerah sebelumnya.",
+    area: "Sistem",
+  },
+  {
+    id: "deployment-cache-and-landing-load-recovery",
+    date: "2026-08-09",
+    type: "perbaikan",
+    title: "Mempercepat dan menstabilkan pemuatan setelah deployment",
+    summary:
+      "Aplikasi kini mendeteksi build terbaru, memulihkan chunk yang macet tanpa spinner permanen, serta menunda pemuatan peta dan mode 3D di landing page sampai diperlukan.",
+    area: "Performa",
+  },
+  {
+    id: "building-code-first-catalog-column",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Memprioritaskan kode bangunan di Pusat Data",
+    summary:
+      "Kode Bangunan 3D kini ditempatkan pada kolom paling kiri agar identitas utama bangunan langsung terlihat saat membuka Pusat Data Bangunan.",
+    area: "Pusat Data Bangunan",
+  },
+  {
+    id: "clear-invalid-legacy-asset-region",
+    date: "2026-08-09",
+    type: "perbaikan",
+    title: "Memperbaiki wilayah tanah yang tidak sesuai",
+    summary:
+      "Data Kecamatan dan Kelurahan lama yang tidak terkait pada tanah berkode 1.3.1.01.01.04.001 telah dibersihkan sehingga field kosong tidak lagi menampilkan wilayah sebelumnya.",
+    area: "Pusat Data Tanah",
+  },
+  {
+    id: "comprehensive-digital-twin-search-highlight",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Melengkapi pencarian Digital Twin",
+    summary:
+      "Pencarian kini mencakup seluruh atribut 2D dan 3D, menyorot informasi yang cocok, serta menampilkan sementara objek yang tersembunyi oleh filter atau pilihan LOD.",
+    area: "Digital Twin",
+  },
+  {
+    id: "contextual-building-land-popup",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menyusun popup berdasarkan objek peta",
+    summary:
+      "Popup bangunan kini memprioritaskan identitas dan model 3D, lalu menampilkan bidang tanah sebagai konteks terpisah; popup bidang tetap berfokus pada data tanah dan jumlah bangunan.",
+    area: "Digital Twin",
+  },
+  {
+    id: "persistent-map-popup-fields",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menampilkan seluruh informasi popup peta",
+    summary:
+      "Setiap bagian dan field pada popup peta kini tetap terlihat; data yang belum diisi ditampilkan dengan tanda strip agar struktur informasi selalu konsisten.",
+    area: "Digital Twin",
+  },
+  {
+    id: "hide-primary-id-columns",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Meringkas tabel data tanah",
+    summary:
+      "Kolom ID utama dihapus dari seluruh tabel Kelola Tanah agar informasi penting lebih mudah dipindai tanpa mengubah relasi data internal.",
+    area: "Kelola Tanah",
+  },
+  {
+    id: "land-management-identity-terms",
+    date: "2026-08-09",
+    type: "peningkatan",
+    title: "Menyelaraskan istilah data tanah",
+    summary:
+      "Seluruh menu Kelola Tanah kini menggunakan Kode Tanah dan Nama Tanah, sementara identitas spasial ditampilkan ringkas sebagai Kode Bidang.",
+    area: "Kelola Tanah",
+  },
+  {
+    id: "building-code-columns-land-actions",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Memperjelas identitas dan aksi pusat data",
+    summary:
+      "Pusat Data Bangunan kini memisahkan Kode Bidang 2D dan Kode Bangunan 3D, sementara aksi Pusat Data Tanah memakai pola Kelola, unduh, dan hapus yang lebih ringkas.",
+    area: "Pusat Data",
+  },
+  {
+    id: "land-data-identity-labels",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Menyesuaikan identitas data tanah",
+    summary:
+      "Tabel dan PDF Pusat Data Tanah kini menggunakan label Kode Tanah dan Nama Tanah agar identitasnya tidak tertukar dengan data bangunan.",
+    area: "Pusat Data Tanah",
+  },
+  {
+    id: "building-catalog-pdf-download",
+    date: "2026-08-08",
+    type: "fitur",
+    title: "Menambahkan PDF Pusat Data Bangunan",
+    summary:
+      "Setiap data bangunan kini dapat diunduh sebagai PDF yang memuat identitas, model 3D, dimensi, lokasi tanah, foto kondisi, dan sketsa lokasi.",
+    area: "Pusat Data Bangunan",
+  },
+  {
+    id: "lod-catalog-grouped-by-2d-area",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Meringkas katalog LOD berdasarkan bidang 2D",
+    summary:
+      "Daftar bangunan pada setiap LOD kini dikelompokkan per kode 2D dalam panel yang dapat dibuka, sehingga katalog lebih ringkas dan mudah ditelusuri.",
+    area: "Digital Twin",
+  },
+  {
+    id: "organized-land-building-map-navigation",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Menata navigasi tanah, bangunan, dan peta",
+    summary:
+      "Sidebar kini memisahkan Kelola Tanah, Kelola Bangunan, dan Peta; pusat data tanah maupun bangunan berada di kelompoknya masing-masing, sementara Digital Twin serta Orthophoto berada di menu Peta.",
+    area: "Navigasi",
+  },
+  {
+    id: "pdf-brand-logo-coordinate-callout",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Memperjelas identitas dan lokasi pada PDF",
+    summary:
+      "Header PDF kini memakai logo Bhumi Satya dan marker sketsa lokasi menampilkan latitude serta longitude dalam callout yang mudah dibaca.",
+    area: "Dokumen PDF",
+  },
+  {
+    id: "realtime-3d-shadow-analysis",
+    date: "2026-08-08",
+    type: "fitur",
+    title: "Menambahkan analisis bayangan 3D",
+    summary:
+      "Analisis bayangan kini mempertahankan warna polygon 2D, membuat basemap terang pada siang dan gelap pada malam, serta menampilkan tepi bayangan yang lebih lembut.",
+    area: "Digital Twin",
+  },
+  {
+    id: "system-building-identity",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Menyelaraskan identitas bangunan",
+    summary:
+      "Seluruh sistem kini menggunakan istilah kode bangunan dan nama bangunan serta menampilkan ID primary key pada daftar dan detail utama.",
+    area: "Seluruh Sistem",
+  },
+  {
+    id: "pdf-photo-and-location-sketch",
+    date: "2026-08-08",
+    type: "peningkatan",
+    title: "Menambahkan foto dan sketsa lokasi ke PDF",
+    summary:
+      "Dokumen PDF kini menyertakan foto kondisi eksisting serta citra peta satelit dengan marker pada koordinat lokasi.",
+    area: "Dokumen PDF",
+  },
+  {
+    id: "official-data-sheet-pdf-layout",
+    date: "2026-08-07",
+    type: "peningkatan",
+    title: "Memperbarui tampilan dokumen PDF",
+    summary:
+      "Unduhan data aset dan penyewaan kini memakai format lembar data resmi dengan header Bhumi Satya, tabel berbagian, dan penomoran halaman.",
+    area: "Dokumen PDF",
+  },
+  {
+    id: "public-digital-twin-hero-stats",
+    date: "2026-08-07",
+    type: "peningkatan",
+    title: "Memperjelas ringkasan publik Digital Twin",
+    summary:
+      "Hero Beranda kini menampilkan jumlah bidang 2D, bangunan 3D, objek tersedia disewa, dan kecamatan yang tercakup berdasarkan data publik.",
+    area: "Beranda",
   },
   {
     id: "configurable-production-database-ssl",
@@ -257,7 +527,7 @@ export const changelogEntries = [
     type: "fitur",
     title: "Menambahkan basemap orthophoto",
     summary:
-      "Basemap Orthophoto Clarity kini dapat dipilih pada Digital Twin 2D, mode 3D, dan preview model untuk melihat citra permukaan yang lebih jelas.",
+      "Basemap Orthophoto kini dapat dipilih pada Digital Twin 2D, mode 3D, dan preview model untuk melihat citra permukaan yang lebih jelas.",
     area: "Digital Twin",
   },
   {

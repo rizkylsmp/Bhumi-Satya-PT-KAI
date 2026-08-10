@@ -3,6 +3,7 @@ import {
   Aset,
   Aset2dCatalog,
   Aset3dCatalog,
+  BuildingDocumentation,
   AsetModel3d,
   sequelize,
 } from "../models/index.js";
@@ -29,6 +30,15 @@ const assetAttributes = [
   "jenis_hak",
   "atas_nama",
   "penggunaan_saat_ini",
+  "lintas",
+  "km_hm",
+  "dusun",
+  "kabupaten_kota",
+  "provinsi",
+  "easting",
+  "northing",
+  "coordinate_crs",
+  "penguasaan",
   "luas",
   "luas_lapangan",
   "batas_utara",
@@ -62,6 +72,7 @@ const assetAttributes = [
   "luas_bangunan_pemetaan",
   "njop_bumi_pemetaan",
   "njop_bangunan_pemetaan",
+  "njop_tahun",
   "pbb_pemetaan",
   "desa_kelurahan",
   "kecamatan",
@@ -80,6 +91,8 @@ const assetAttributes = [
   "model_3d_source_crs",
   "model_3d_recorded_at",
   "model_3d_accuracy_m",
+  "foto_aset",
+  "notes",
 ];
 
 const modelAttributes = [
@@ -127,6 +140,10 @@ export const serializeCatalog = (record) => {
     active_model: activeModel,
     active_models: models.filter((model) => model.is_active),
     building_name: buildingName,
+    jenis_bangunan: value.jenis_bangunan || null,
+    material_dinding: value.material_dinding || null,
+    material_lantai: value.material_lantai || null,
+    material_atap: value.material_atap || null,
     model_status: activeModel?.review_status || activeModel?.conversion_status || "belum_ada",
     category: "Bangunan",
     model_format: activeModel?.format || activeModel?.model_type || null,
@@ -302,10 +319,11 @@ export const exportCsv = async (req, res) => {
       order: catalogOrder(req.query.sort, req.query.order),
     });
     const headers = [
-      "kode_2d", "kode_3d", "kode_aset", "nama_bangunan_3d", "nama_aset", "kategori", "status_katalog", "status_model",
+      "id_primary_key", "kode_2d", "kode_3d", "kode_bangunan", "nama_bangunan_3d", "nama_bangunan", "kategori", "status_katalog", "status_model",
       "format", "center_x", "center_y", "url_model", "dibuat", "diperbarui",
     ];
     const body = rows.map(serializeCatalog).map((item) => [
+      item.asset?.id_aset,
       item.kode_2d,
       item.kode_3d,
       item.asset?.kode_aset,
@@ -486,9 +504,15 @@ export const update = async (req, res) => {
       });
     }
 
+    const profile = Object.fromEntries(
+      ["jenis_bangunan", "material_dinding", "material_lantai", "material_atap"].map(
+        (key) => [key, String(req.body?.[key] || "").trim().slice(0, 100) || null],
+      ),
+    );
     const oldData = catalog.toJSON();
     await catalog.update({
       building_name: buildingName || null,
+      ...profile,
       updated_at: new Date(),
     });
 
@@ -507,7 +531,7 @@ export const update = async (req, res) => {
     });
     return res.json({
       success: true,
-      message: "Nama bangunan berhasil disimpan",
+      message: "Profil bangunan berhasil disimpan",
       data: serializeCatalog(updated),
     });
   } catch (error) {
@@ -600,7 +624,11 @@ export const remove = async (req, res) => {
     const models = await AsetModel3d.findAll({
       where: { kode_3d: catalog.kode_3d },
     });
-    const storagePaths = [...new Set(models.flatMap((model) => [
+    const documentation = await BuildingDocumentation.findAll({
+      where: { kode_3d: catalog.kode_3d },
+    });
+    const storagePaths = [...new Set([
+      ...models.flatMap((model) => [
       model.storage_path,
       model.converted_storage_path,
       model.lod_medium_storage_path,
@@ -608,7 +636,9 @@ export const remove = async (req, res) => {
       ...(Array.isArray(model.manifest?.packageStoragePaths)
         ? model.manifest.packageStoragePaths
         : []),
-    ]).filter(Boolean))];
+      ]),
+      ...documentation.map((item) => item.storage_path),
+    ].filter(Boolean))];
 
     await sequelize.transaction(async (transaction) => {
       await catalog.destroy({ transaction });
@@ -633,6 +663,11 @@ export const remove = async (req, res) => {
           id_model_3d: model.id_model_3d,
           version: model.version,
         })),
+        deleted_documentation: documentation.map((item) => ({
+          id_documentation: item.id_documentation,
+          media_type: item.media_type,
+          title: item.title,
+        })),
       },
       keterangan: `Menghapus permanen ${catalog.kode_3d} dan ${models.length} versi model`,
       user_id: req.user.id_user,
@@ -647,6 +682,7 @@ export const remove = async (req, res) => {
       data: {
         kode_3d: catalog.kode_3d,
         deleted_model_count: models.length,
+        deleted_documentation_count: documentation.length,
         storage_cleanup_failed_count: failedStoragePaths.length,
       },
     });

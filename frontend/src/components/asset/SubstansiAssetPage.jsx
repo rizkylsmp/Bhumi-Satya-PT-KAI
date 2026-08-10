@@ -285,7 +285,7 @@ export default function SubstansiAssetPage({
       );
     } catch (error) {
       console.error("Error fetching assets:", error);
-      toast.error("Gagal memuat data aset");
+      toast.error("Gagal memuat data bangunan");
       setAssets((current) => (current.length ? current : []));
     } finally {
       setLoading(false);
@@ -430,7 +430,7 @@ export default function SubstansiAssetPage({
         <PackageIcon size={40} weight="duotone" className="text-text-muted" />
       </div>
       <h3 className="text-lg font-semibold text-text-primary mb-2">
-        Tidak ada data aset
+        Tidak ada data bangunan
       </h3>
       <p className="text-text-muted text-sm max-w-sm mx-auto">
         Belum ada aset yang terdaftar atau tidak ditemukan hasil yang sesuai
@@ -511,7 +511,7 @@ export default function SubstansiAssetPage({
             <div className="hidden lg:block overflow-x-auto">
               <table
                 className="admin-data-table"
-                style={{ minWidth: `${560 + columns.length * 160}px` }}
+                style={{ minWidth: `${480 + columns.length * 160}px` }}
               >
                 <thead>
                   <tr className="bg-linear-to-r from-surface-secondary to-surface border-b border-border">
@@ -521,14 +521,14 @@ export default function SubstansiAssetPage({
                       column="kode_aset"
                       className="min-w-48"
                     >
-                      Kode Aset
+                      Kode Tanah
                     </TableHeader>
                     <TableHeader
                       sortable
                       column="nama_aset"
                       className="min-w-72"
                     >
-                      Nama Aset
+                      Nama Tanah
                     </TableHeader>
                     {columns.map((col) => (
                       <TableHeader
@@ -569,14 +569,14 @@ export default function SubstansiAssetPage({
                           </span>
                         </td>
 
-                        {/* Kode Aset */}
+                        {/* Kode Tanah */}
                         <td className="px-4 py-4">
                           <span className="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-secondary rounded-lg text-sm font-mono font-semibold text-text-primary">
                             {asset.kode_aset}
                           </span>
                         </td>
 
-                        {/* Nama Aset */}
+                        {/* Nama Tanah */}
                         <td className="px-4 py-4">
                           <span className="text-sm font-medium text-text-primary wrap-break-word max-w-80">
                             {asset.nama_aset}

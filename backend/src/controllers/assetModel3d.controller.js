@@ -53,7 +53,8 @@ const MODEL_LODS = new Set([
   "GAUSSIAN_SPLATTING",
 ]);
 
-const normalizeModelLod = (value) => {
+export const normalizeModelLod = (value) => {
+  if (value == null || String(value).trim() === "") return "LOD1";
   const lod = String(value || "").trim().toUpperCase();
   if (!MODEL_LODS.has(lod)) {
     throw new ModelUploadValidationError("Level of Detail model tidak valid");
@@ -323,7 +324,7 @@ export const upload = async (req, res) => {
     if (duplicate) {
       return res.status(409).json({
         success: false,
-        error: `File yang sama sudah tersimpan sebagai ${lod} versi ${duplicate.version}`,
+        error: `File yang sama sudah tersimpan sebagai model versi ${duplicate.version}`,
         data: serializeModel(duplicate),
       });
     }
@@ -445,8 +446,8 @@ export const upload = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: packageFiles
-        ? `Paket 3D Tiles ${lod} versi ${version} berhasil diunggah dan siap diverifikasi`
-        : `Model 3D ${lod} versi ${version} berhasil diunggah`,
+        ? `Paket 3D Tiles versi ${version} berhasil diunggah dan siap diverifikasi`
+        : `Model 3D versi ${version} berhasil diunggah`,
       data: serializeModel(model),
     });
   } catch (error) {

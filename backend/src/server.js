@@ -19,6 +19,7 @@ import chatbotRoutes from "./routes/chatbot.routes.js";
 import aset3dRoutes from "./routes/aset3d.routes.js";
 import aset2dRoutes from "./routes/aset2d.routes.js";
 import orthophotoRoutes from "./routes/orthophoto.routes.js";
+import buildingDocumentationRoutes from "./routes/buildingDocumentation.routes.js";
 
 // Load .env only for local development (Vercel injects env vars directly)
 if (!process.env.VERCEL) {
@@ -107,6 +108,7 @@ app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/aset-3d", aset3dRoutes);
 app.use("/api/aset-2d", aset2dRoutes);
 app.use("/api/orthophotos", orthophotoRoutes);
+app.use("/api/building-documentation", buildingDocumentationRoutes);
 
 // Landing page - inline HTML for serverless compatibility
 app.get("/", (req, res) => {

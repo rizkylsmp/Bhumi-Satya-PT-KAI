@@ -94,16 +94,17 @@ export const asetService = {
   delete: (id) => api.delete(`/aset/${id}`),
   getStats: () => api.get("/aset/stats"),
   getFilterOptions: () => api.get("/aset/filter-options"),
+  getNjopHistory: (id) => api.get(`/aset/${id}/njop-history`),
+  saveNjopHistory: (id, payload) => api.post(`/aset/${id}/njop-history`, payload),
 };
 
 export const assetModel3dService = {
   list: (assetId, kode3d) => api.get(`/aset/${assetId}/models-3d`, {
     params: { kode_3d: kode3d },
   }),
-  upload: (assetId, kode3d, file, lod) => {
+  upload: (assetId, kode3d, file) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("lod", lod);
     formData.append("kode_3d", kode3d);
     return api.post(`/aset/${assetId}/models-3d`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -169,6 +170,37 @@ export const aset3dCatalogService = {
     { kode_2d: kode2d },
   ),
   remove: (kode3d) => api.delete(`/aset-3d/${encodeURIComponent(kode3d)}`),
+  listOccupants: (kode3d) => api.get(
+    `/aset-3d/${encodeURIComponent(kode3d)}/occupants`,
+  ),
+  createOccupant: (kode3d, payload) => api.post(
+    `/aset-3d/${encodeURIComponent(kode3d)}/occupants`,
+    payload,
+  ),
+  updateOccupant: (kode3d, occupantId, payload) => api.put(
+    `/aset-3d/${encodeURIComponent(kode3d)}/occupants/${encodeURIComponent(occupantId)}`,
+    payload,
+  ),
+  removeOccupant: (kode3d, occupantId) => api.delete(
+    `/aset-3d/${encodeURIComponent(kode3d)}/occupants/${encodeURIComponent(occupantId)}`,
+  ),
+};
+
+export const buildingDocumentationService = {
+  buildings: (params) => api.get("/building-documentation/buildings", { params }),
+  list: (params) => api.get("/building-documentation", { params }),
+  create: ({ file, kode3d, title, description, capturedAt }) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("kode_3d", kode3d);
+    if (title) formData.append("title", title);
+    if (description) formData.append("description", description);
+    if (capturedAt) formData.append("captured_at", capturedAt);
+    return api.post("/building-documentation", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  remove: (id) => api.delete(`/building-documentation/${encodeURIComponent(id)}`),
 };
 
 export const aset2dCatalogService = {
@@ -270,7 +302,7 @@ export const uploadService = {
 export const sewaService = {
   getAll: (params) => api.get("/sewa", { params }),
   getById: (id) => api.get(`/sewa/${id}`),
-  getStats: () => api.get("/sewa/stats"),
+  getStats: (params) => api.get("/sewa/stats", { params }),
   create: (data) => api.post("/sewa", data),
   update: (id, data) => api.put(`/sewa/${id}`, data),
   delete: (id) => api.delete(`/sewa/${id}`),

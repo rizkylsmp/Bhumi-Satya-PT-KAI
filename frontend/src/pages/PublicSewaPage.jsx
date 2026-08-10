@@ -20,6 +20,7 @@ import {
   formatCurrency as formatRupiah,
   formatNumber,
 } from "../utils/format";
+import RentalCategoryTabs from "../components/sewa/RentalCategoryTabs";
 
 function getPhotos(item) {
   const source = item.foto_sewa || item.aset?.foto_aset;
@@ -49,6 +50,7 @@ export default function PublicSewaPage() {
   const [search, setSearch] = useState("");
   const [jenisAset, setJenisAset] = useState("");
   const [kecamatan, setKecamatan] = useState("");
+  const [category, setCategory] = useState("Tanah");
   const [pageSize, setPageSize] = useState(6);
   const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -111,12 +113,13 @@ export default function PublicSewaPage() {
         .toLocaleLowerCase("id");
 
       return (
+        item.kategori_sewa === category &&
         (!query || searchable.includes(query)) &&
         (!jenisAset || aset.jenis_aset === jenisAset) &&
         (!kecamatan || aset.kecamatan === kecamatan)
       );
     });
-  }, [items, search, jenisAset, kecamatan]);
+  }, [category, items, search, jenisAset, kecamatan]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -145,10 +148,10 @@ export default function PublicSewaPage() {
             <div className="max-w-3xl">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-emerald-50 backdrop-blur">
                 <StorefrontIcon size={15} weight="fill" />
-                Katalog Sewa Aset Kota Pasuruan
+                Katalog Sewa Aset
               </span>
               <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                Temukan aset yang sesuai untuk kebutuhan Anda
+                Temukan {category.toLowerCase()} untuk kebutuhan Anda
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-emerald-50/80 sm:text-base">
                 Telusuri aset yang tersedia, bandingkan lokasi dan jenisnya, lalu
@@ -221,6 +224,16 @@ export default function PublicSewaPage() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="mt-4">
+            <RentalCategoryTabs
+              value={category}
+              onChange={(value) => {
+                setCategory(value);
+                setPage(1);
+              }}
+            />
           </div>
 
           <div className="mt-8">
@@ -384,6 +397,11 @@ function RentalCard({ item, onClick }) {
               <h2 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-text-primary">
                 {item.nama_aset}
               </h2>
+              {(aset.id_aset ?? item.id_aset) && (
+                <p className="mt-1 font-mono text-[10px] font-semibold text-text-muted">
+                  ID {aset.id_aset ?? item.id_aset}
+                </p>
+              )}
             </div>
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
               <BuildingsIcon size={20} weight="duotone" />
@@ -480,6 +498,11 @@ function RentalDetail({ item, onClose, onLogin }) {
           <h2 id="rental-detail-title" className="mt-1 text-2xl font-bold text-text-primary">
             {item.nama_aset}
           </h2>
+          {(aset.id_aset ?? item.id_aset) && (
+            <p className="mt-1 font-mono text-xs font-semibold text-text-muted">
+              ID {aset.id_aset ?? item.id_aset}
+            </p>
+          )}
           <p className="mt-3 flex items-start gap-2 text-sm text-text-secondary">
             <MapPinIcon size={17} weight="fill" className="mt-0.5 shrink-0 text-rose-500" />
             {location || "Lokasi belum tersedia"}

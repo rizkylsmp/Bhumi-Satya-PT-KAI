@@ -52,6 +52,11 @@ const DETAIL_SECTIONS = [
     icon: ArrowsClockwiseIcon,
   },
   {
+    id: "data-penghuni",
+    label: "Data Penghuni",
+    icon: BuildingsIcon,
+  },
+  {
     id: "daftar-ruang-3d",
     label: "Daftar Ruang",
     icon: TableIcon,
@@ -122,6 +127,18 @@ const formatDateTime = (value) => {
   }).format(new Date(value));
 };
 
+const calculateAge = (birthDate) => {
+  if (!birthDate) return null;
+  const born = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(born.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - born.getFullYear();
+  const beforeBirthday = today.getMonth() < born.getMonth()
+    || (today.getMonth() === born.getMonth() && today.getDate() < born.getDate());
+  if (beforeBirthday) age -= 1;
+  return age >= 0 ? age : null;
+};
+
 const metadataFromModel = (model) => ({
   description: model?.manifest?.description || "",
   altitude_m: model?.altitude_m ?? "",
@@ -163,6 +180,26 @@ const asset3dMetadataFromAsset = (asset) => ({
     ? String(asset.model_3d_recorded_at).slice(0, 10)
     : "",
   model_3d_accuracy_m: asset?.model_3d_accuracy_m ?? "",
+});
+
+const buildingProfileFromCatalog = (catalog) => ({
+  jenis_bangunan: catalog?.jenis_bangunan || "",
+  material_dinding: catalog?.material_dinding || "",
+  material_lantai: catalog?.material_lantai || "",
+  material_atap: catalog?.material_atap || "",
+});
+
+const emptyOccupant = () => ({
+  id_penghuni: null,
+  nama_penghuni: "",
+  alamat: "",
+  tempat_lahir: "",
+  tanggal_lahir: "",
+  pekerjaan: "",
+  no_ktp: "",
+  status_penguasaan: "",
+  aktif: true,
+  catatan: "",
 });
 
 const statusConfig = (model) => {
@@ -314,6 +351,13 @@ export default function Kelola3dDetailPage() {
   const [catalog, setCatalog] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [buildingName, setBuildingName] = useState("");
+  const [buildingProfile, setBuildingProfile] = useState(() =>
+    buildingProfileFromCatalog(null),
+  );
+  const [occupants, setOccupants] = useState([]);
+  const [occupantDraft, setOccupantDraft] = useState(() => emptyOccupant());
+  const [occupantsLoading, setOccupantsLoading] = useState(false);
+  const [savingOccupant, setSavingOccupant] = useState(false);
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState(null);
@@ -322,7 +366,6 @@ export default function Kelola3dDetailPage() {
   const [asset3dMetadata, setAsset3dMetadata] = useState(() =>
     asset3dMetadataFromAsset(null),
   );
-  const [importLod, setImportLod] = useState("LOD1");
   const [activeModelLod, setActiveModelLod] = useState("LOD1");
   const [uploading, setUploading] = useState(false);
   const [isDraggingModelFile, setIsDraggingModelFile] = useState(false);
@@ -542,8 +585,9 @@ export default function Kelola3dDetailPage() {
       const nextCatalog = response.data?.data || null;
       setCatalog(nextCatalog);
       setBuildingName(nextCatalog?.building_name || "");
+      setBuildingProfile(buildingProfileFromCatalog(nextCatalog));
     } catch (error) {
-      toast.error(errorMessage(error, "Gagal memuat detail aset Kelola 3D"));
+      toast.error(errorMessage(error, "Gagal memuat detail bangunan 3D"));
       setCatalog(null);
     } finally {
       setCatalogLoading(false);
@@ -553,6 +597,70 @@ export default function Kelola3dDetailPage() {
   useEffect(() => {
     fetchCatalog();
   }, [fetchCatalog]);
+
+  const fetchOccupants = useCallback(async () => {
+    if (!kode3d || !canUpdate) {
+      setOccupants([]);
+      return;
+    }
+    setOccupantsLoading(true);
+    try {
+      const response = await aset3dCatalogService.listOccupants(kode3d);
+      setOccupants(response.data?.data || []);
+    } catch (error) {
+      toast.error(errorMessage(error, "Gagal memuat data penghuni"));
+    } finally {
+      setOccupantsLoading(false);
+    }
+  }, [canUpdate, kode3d]);
+
+  useEffect(() => {
+    fetchOccupants();
+  }, [fetchOccupants]);
+
+  const saveOccupant = async () => {
+    if (!canUpdate || !occupantDraft.nama_penghuni.trim()) {
+      toast.error("Nama penghuni wajib diisi");
+      return;
+    }
+    setSavingOccupant(true);
+    try {
+      const response = occupantDraft.id_penghuni
+        ? await aset3dCatalogService.updateOccupant(
+            kode3d,
+            occupantDraft.id_penghuni,
+            occupantDraft,
+          )
+        : await aset3dCatalogService.createOccupant(kode3d, occupantDraft);
+      toast.success(response.data?.message || "Data penghuni berhasil disimpan");
+      setOccupantDraft(emptyOccupant());
+      await fetchOccupants();
+    } catch (error) {
+      toast.error(errorMessage(error, "Gagal menyimpan data penghuni"));
+    } finally {
+      setSavingOccupant(false);
+    }
+  };
+
+  const removeOccupant = async (occupant) => {
+    const approved = await confirm({
+      title: "Hapus Data Penghuni?",
+      message: `Data ${occupant.nama_penghuni} akan dihapus permanen.`,
+      confirmText: "Hapus",
+      type: "danger",
+    });
+    if (!approved) return;
+    try {
+      await aset3dCatalogService.removeOccupant(kode3d, occupant.id_penghuni);
+      if (occupantDraft.id_penghuni === occupant.id_penghuni) {
+        setOccupantDraft(emptyOccupant());
+      }
+      await fetchOccupants();
+      toast.success("Data penghuni berhasil dihapus");
+    } catch (error) {
+      toast.error(errorMessage(error, "Gagal menghapus data penghuni"));
+    }
+  };
 
   useEffect(() => {
     if (!isParcelSelectorOpen) return undefined;
@@ -635,7 +743,6 @@ export default function Kelola3dDetailPage() {
       if (nextSelected) {
         const nextLod = normalizeLod(nextSelected.lod);
         setActiveModelLod(nextLod);
-        setImportLod(nextLod);
       }
       setPreviewRevision((value) => value + 1);
     } catch (error) {
@@ -654,10 +761,6 @@ export default function Kelola3dDetailPage() {
   useEffect(() => {
     setAsset3dMetadata(asset3dMetadataFromAsset(selectedAsset));
   }, [selectedAsset]);
-
-  useEffect(() => {
-    setImportLod("LOD1");
-  }, [selectedAssetId]);
 
   useEffect(() => {
     const modelRooms = selectedModel?.manifest?.rooms;
@@ -683,10 +786,6 @@ export default function Kelola3dDetailPage() {
 
   const handleUpload = async (file) => {
     if (!file || !selectedAssetId || !canUpdate || uploading) return;
-    if (!importLod) {
-      toast.error("Pilih Level of Detail sebelum mengimpor model");
-      return;
-    }
     if (!/\.(kmz|glb|zip)$/i.test(file.name)) {
       toast.error("File model harus berformat KMZ, GLB, atau ZIP 3D Tiles");
       return;
@@ -702,7 +801,6 @@ export default function Kelola3dDetailPage() {
         selectedAssetId,
         catalog?.kode_3d,
         file,
-        importLod,
       );
       const uploadedModel = uploadResponse.data?.data;
       if (uploadedModel?.id_model_3d) {
@@ -829,10 +927,13 @@ export default function Kelola3dDetailPage() {
       }
       if (
         buildingName.trim() !== String(catalog?.building_name || "").trim()
+        || JSON.stringify(buildingProfile)
+          !== JSON.stringify(buildingProfileFromCatalog(catalog))
       ) {
         requests.push(
           aset3dCatalogService.update(catalog.kode_3d, {
             building_name: buildingName.trim(),
+            ...buildingProfile,
           }),
         );
       }
@@ -1055,9 +1156,11 @@ export default function Kelola3dDetailPage() {
         selectedModel &&
           (JSON.stringify(metadata) !==
             JSON.stringify(metadataFromModel(selectedModel))
-            || buildingName.trim() !== String(catalog?.building_name || "").trim()),
+            || buildingName.trim() !== String(catalog?.building_name || "").trim()
+            || JSON.stringify(buildingProfile)
+              !== JSON.stringify(buildingProfileFromCatalog(catalog))),
       ),
-    [buildingName, catalog?.building_name, metadata, selectedModel],
+    [buildingName, buildingProfile, catalog, metadata, selectedModel],
   );
   const handleSelectModel = async (modelId) => {
     if (String(modelId) === String(selectedModel?.id_model_3d)) return true;
@@ -1087,22 +1190,27 @@ export default function Kelola3dDetailPage() {
       if (!changed) return;
     }
     setActiveModelLod(normalizedLod);
-    setImportLod(normalizedLod);
   };
   const discardMetadataChanges = () => {
     setMetadata(metadataFromModel(selectedModel));
     setBuildingName(catalog?.building_name || "");
+    setBuildingProfile(buildingProfileFromCatalog(catalog));
   };
   const previewAsset = useMemo(
     () =>
       selectedAsset
-        ? {
-            ...selectedAsset,
-            kode_2d: catalog?.kode_2d,
-            active_model_3d: previewModel,
-          }
+          ? {
+              ...selectedAsset,
+              kode_2d: catalog?.kode_2d,
+              jenis_bangunan: buildingProfile.jenis_bangunan,
+              material_dinding: buildingProfile.material_dinding,
+              material_lantai: buildingProfile.material_lantai,
+              material_atap: buildingProfile.material_atap,
+              penghuni_aktif: occupants.find((occupant) => occupant.aktif) || null,
+              active_model_3d: previewModel,
+            }
         : null,
-    [catalog?.kode_2d, previewModel, selectedAsset],
+    [buildingProfile, catalog?.kode_2d, occupants, previewModel, selectedAsset],
   );
 
   return (
@@ -1117,7 +1225,7 @@ export default function Kelola3dDetailPage() {
             onClick={() => navigate("/kelola-3d")}
             className="transition hover:text-accent"
           >
-            Kelola 3D
+            Pusat Data Bangunan
           </button>
           <CaretRightIcon size={12} />
           <span className="text-text-primary">Detail</span>
@@ -1130,7 +1238,7 @@ export default function Kelola3dDetailPage() {
                 type="button"
                 onClick={() => navigate("/kelola-3d")}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-secondary text-text-secondary transition hover:border-accent hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
-                aria-label="Kembali ke daftar Kelola 3D"
+                aria-label="Kembali ke Pusat Data Bangunan"
               >
                 <ArrowLeftIcon size={16} weight="bold" />
               </button>
@@ -1139,7 +1247,7 @@ export default function Kelola3dDetailPage() {
               </span>
               <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-[0.14em] text-accent">
-                  Detail Kelola 3D
+                  Detail Bangunan 3D
                 </p>
                 <h1 className="mt-0.5 truncate text-lg font-black text-text-primary md:text-xl">
                   {catalogLoading
@@ -1234,7 +1342,7 @@ export default function Kelola3dDetailPage() {
                   type="search"
                   value={parcelSearch}
                   onChange={(event) => setParcelSearch(event.target.value)}
-                  placeholder="Cari kode 2D, kode aset, atau nama…"
+                  placeholder="Cari kode 2D, kode bangunan, atau nama…"
                   className="h-9 w-full rounded-lg border border-border bg-surface-secondary pl-9 pr-3 text-[10px] font-semibold text-text-primary outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15"
                   autoFocus
                 />
@@ -1294,7 +1402,7 @@ export default function Kelola3dDetailPage() {
             <SectionTitle
               icon={StackIcon}
               title="Pilih Aset untuk Dikelola"
-              description="Mulai dari kode aset yang tersinkron dari Pusat Data Aset"
+              description="Mulai dari kode bangunan yang tersinkron dari Pusat Data"
               action={
                 <button
                   type="button"
@@ -1316,14 +1424,14 @@ export default function Kelola3dDetailPage() {
                   Langkah 1
                 </span>
                 <h2 className="mt-3 text-sm font-black text-text-primary">
-                  Temukan kode aset
+                  Temukan kode bangunan
                 </h2>
                 <p className="mt-1 text-[10px] leading-relaxed text-text-muted">
                   Cari berdasarkan kode, nama, atau lokasi. Pilihan aset
                   menentukan model, daftar ruang, dan preview yang ditampilkan.
                 </p>
                 <label className="relative mt-4 block">
-                  <span className="sr-only">Cari kode atau nama aset</span>
+                  <span className="sr-only">Cari kode atau nama bangunan</span>
                   <MagnifyingGlassIcon
                     size={16}
                     className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"
@@ -1411,10 +1519,10 @@ export default function Kelola3dDetailPage() {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[11px] font-black text-text-primary">
-                                {asset.kode_aset || "Tanpa kode aset"}
+                                {asset.kode_aset || "Tanpa kode bangunan"}
                               </span>
                               <span className="mt-0.5 block truncate text-[9px] font-semibold text-text-secondary">
-                                {asset.nama_aset || "Nama aset belum diisi"}
+                                {asset.nama_aset || "Nama bangunan belum diisi"}
                               </span>
                             </span>
                           </div>
@@ -1461,7 +1569,7 @@ export default function Kelola3dDetailPage() {
                   </p>
                   <p className="mt-1 truncate text-sm font-black text-text-primary">
                     {selectedAsset.kode_aset || "Tanpa kode"} ·{" "}
-                    {selectedAsset.nama_aset || "Nama aset belum diisi"}
+                    {selectedAsset.nama_aset || "Nama bangunan belum diisi"}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1 truncate text-[9px] text-text-muted">
                     <MapPinIcon size={11} />{" "}
@@ -1484,7 +1592,7 @@ export default function Kelola3dDetailPage() {
           <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(32rem,0.95fr)]">
             <div className="space-y-4">
               <nav
-                aria-label="Navigasi Detail Kelola 3D"
+                aria-label="Navigasi detail bangunan 3D"
                 className="sticky top-0 z-20 overflow-x-auto rounded-xl border border-border bg-surface/95 p-2 shadow-sm backdrop-blur"
               >
                 <div
@@ -1634,31 +1742,10 @@ export default function Kelola3dDetailPage() {
                             </div>
                           </div>
 
-                          <div className="grid w-full grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2 sm:w-[23rem]">
-                            <label className="block">
-                              <span className="sr-only">Tujuan Level of Detail</span>
-                              <select
-                                value={importLod}
-                                disabled={!selectedAsset || !canUpdate || uploading}
-                                onChange={(event) =>
-                                  void handleModelLodChange(event.target.value)
-                                }
-                                className="h-9 w-full rounded-lg border border-border bg-surface px-2.5 text-[8px] font-extrabold text-text-primary outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 disabled:cursor-not-allowed disabled:opacity-60"
-                                aria-label="Pilih Level of Detail untuk model"
-                              >
-                                {LOD_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label} · {option.description}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
+                          <div className="w-full sm:w-44">
                             <button
                               type="button"
-                              disabled={
-                                !selectedAsset || !canUpdate || uploading || !importLod
-                              }
+                              disabled={!selectedAsset || !canUpdate || uploading}
                               onClick={() => fileInputRef.current?.click()}
                               className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 text-[8px] font-black text-white transition-colors hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
                               aria-busy={uploading}
@@ -1668,7 +1755,7 @@ export default function Kelola3dDetailPage() {
                               ) : (
                                 <FileArrowUpIcon size={13} weight="bold" />
                               )}
-                              {uploading ? "Memproses…" : `Pilih File · ${importLod}`}
+                              {uploading ? "Memproses…" : "Pilih File 3D"}
                             </button>
                           </div>
                         </div>
@@ -2419,6 +2506,32 @@ export default function Kelola3dDetailPage() {
                                 className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-[10px] font-semibold text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-70"
                               />
                             </label>
+                            {[
+                              ["jenis_bangunan", "Jenis Bangunan", "Gedung, rumah dinas, gudang, dan lainnya"],
+                              ["material_dinding", "Dinding", "Material utama dinding"],
+                              ["material_lantai", "Lantai", "Material utama lantai"],
+                              ["material_atap", "Atap", "Material utama atap"],
+                            ].map(([key, label, placeholder]) => (
+                              <label key={key} className="block">
+                                <span className="mb-1.5 block text-[9px] font-extrabold text-text-secondary">
+                                  {label}
+                                </span>
+                                <input
+                                  type="text"
+                                  maxLength={100}
+                                  value={buildingProfile[key]}
+                                  disabled={!canUpdate}
+                                  onChange={(event) =>
+                                    setBuildingProfile((current) => ({
+                                      ...current,
+                                      [key]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder={placeholder}
+                                  className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-[10px] font-semibold text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-70"
+                                />
+                              </label>
+                            ))}
                             <label className="block">
                               <span className="mb-1.5 block text-[9px] font-extrabold text-text-secondary">
                                 Ketinggian (m)
@@ -3065,6 +3178,91 @@ export default function Kelola3dDetailPage() {
               </section>
 
               <section
+                id="data-penghuni"
+                role="tabpanel"
+                aria-labelledby="detail-nav-data-penghuni"
+                hidden={activePageSection !== "data-penghuni"}
+                className="motion-tab-enter scroll-mt-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-sm"
+              >
+                <SectionTitle
+                  icon={BuildingsIcon}
+                  title="Data Penghuni Bangunan"
+                  description="Data pribadi hanya tersedia untuk petugas yang memiliki izin pembaruan aset."
+                />
+                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <div className="space-y-2">
+                    {occupantsLoading ? (
+                      <div className="flex items-center justify-center rounded-xl border border-border p-8 text-text-muted">
+                        <ArrowsClockwiseIcon size={18} className="animate-spin" />
+                      </div>
+                    ) : occupants.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border p-6 text-center text-[10px] text-text-muted">
+                        Belum ada data penghuni untuk bangunan ini.
+                      </div>
+                    ) : occupants.map((occupant) => (
+                      <div key={occupant.id_penghuni} className="rounded-xl border border-border bg-surface-secondary p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] font-black text-text-primary">{occupant.nama_penghuni}</p>
+                            <p className="mt-1 text-[8px] text-text-muted">
+                              {[occupant.pekerjaan, occupant.status_penguasaan].filter(Boolean).join(" · ") || "Detail belum lengkap"}
+                            </p>
+                          </div>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => setOccupantDraft({ ...emptyOccupant(), ...occupant, tanggal_lahir: occupant.tanggal_lahir || "" })} className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-surface hover:text-accent" aria-label={`Edit ${occupant.nama_penghuni}`}>
+                              <PencilSimpleIcon size={13} weight="bold" />
+                            </button>
+                            <button type="button" onClick={() => removeOccupant(occupant)} className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-600" aria-label={`Hapus ${occupant.nama_penghuni}`}>
+                              <TrashIcon size={13} weight="bold" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-surface-secondary/50 p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        ["nama_penghuni", "Nama Penghuni", "text"],
+                        ["no_ktp", "No. KTP", "text"],
+                        ["tempat_lahir", "Tempat Lahir", "text"],
+                        ["tanggal_lahir", "Tanggal Lahir", "date"],
+                        ["pekerjaan", "Pekerjaan", "text"],
+                        ["status_penguasaan", "Penguasaan", "text"],
+                      ].map(([key, label, type]) => (
+                        <label key={key} className="block">
+                          <span className="mb-1.5 block text-[9px] font-extrabold text-text-secondary">{label}</span>
+                          <input
+                            type={type}
+                            value={occupantDraft[key] ?? ""}
+                            onChange={(event) => setOccupantDraft((current) => ({ ...current, [key]: event.target.value }))}
+                            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-[10px] font-semibold text-text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
+                          />
+                        </label>
+                      ))}
+                      <label className="block sm:col-span-2">
+                        <span className="mb-1.5 block text-[9px] font-extrabold text-text-secondary">Alamat</span>
+                        <textarea rows={2} value={occupantDraft.alamat} onChange={(event) => setOccupantDraft((current) => ({ ...current, alamat: event.target.value }))} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-[10px] font-semibold text-text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
+                      </label>
+                    </div>
+                    {calculateAge(occupantDraft.tanggal_lahir) !== null && (
+                      <p className="mt-2 text-[9px] font-semibold text-text-muted">Usia otomatis: {calculateAge(occupantDraft.tanggal_lahir)} tahun</p>
+                    )}
+                    <div className="mt-4 flex gap-2">
+                      {occupantDraft.id_penghuni && (
+                        <button type="button" onClick={() => setOccupantDraft(emptyOccupant())} className="h-10 rounded-xl border border-border px-4 text-[9px] font-black text-text-secondary">Batal Edit</button>
+                      )}
+                      <button type="button" disabled={savingOccupant || !occupantDraft.nama_penghuni.trim()} onClick={saveOccupant} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-[9px] font-black text-surface disabled:opacity-50">
+                        {savingOccupant ? <ArrowsClockwiseIcon size={13} className="animate-spin" /> : <FloppyDiskIcon size={13} weight="bold" />}
+                        {occupantDraft.id_penghuni ? "Perbarui Penghuni" : "Tambah Penghuni"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
                 id="daftar-ruang-3d"
                 role="tabpanel"
                 aria-labelledby="detail-nav-daftar-ruang-3d"
@@ -3363,7 +3561,7 @@ export default function Kelola3dDetailPage() {
                           Preview belum tersedia
                         </p>
                         <p className="mt-1 max-w-sm text-[10px] leading-relaxed text-slate-400">
-                          Pilih kode aset dari daftar tersinkron untuk menampilkan
+                          Pilih kode bangunan dari daftar tersinkron untuk menampilkan
                           lokasi atau model 3D.
                         </p>
                       </div>
