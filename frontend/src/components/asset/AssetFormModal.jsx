@@ -7,6 +7,7 @@ import FormTextarea from "../form/FormTextarea";
 import FormFileUpload from "../form/FormFileUpload";
 import AssetCoordinatePicker from "../map/AssetCoordinatePicker";
 import AssetPolygonDrawer from "../map/AssetPolygonDrawer";
+import IndonesiaRegionFields from "./IndonesiaRegionFields";
 import { extractGeojsonPolygonPoints as parseGeojsonPolygonPoints } from "../../utils/geojsonExport";
 import { formatNumberWithOptions } from "../../utils/format";
 import {
@@ -681,47 +682,6 @@ export default function AssetFormModal({
     { value: "Lainnya", label: "Lainnya" },
   ];
 
-  const kecamatanOptions = [
-    { value: "Danurejan", label: "Danurejan" },
-    { value: "Gedongtengen", label: "Gedongtengen" },
-    { value: "Gondokusuman", label: "Gondokusuman" },
-    { value: "Gondomanan", label: "Gondomanan" },
-    { value: "Jetis", label: "Jetis" },
-    { value: "Kotagede", label: "Kotagede" },
-    { value: "Kraton", label: "Kraton" },
-    { value: "Mantrijeron", label: "Mantrijeron" },
-    { value: "Mergangsan", label: "Mergangsan" },
-    { value: "Ngampilan", label: "Ngampilan" },
-    { value: "Pakualaman", label: "Pakualaman" },
-    { value: "Tegalrejo", label: "Tegalrejo" },
-    { value: "Umbulharjo", label: "Umbulharjo" },
-    { value: "Wirobrajan", label: "Wirobrajan" },
-  ];
-
-  const kelurahanByKecamatan = {
-    Danurejan: ["Bausasran", "Suryatmajan", "Tegalpanggung"],
-    Gedongtengen: ["Pringgokusuman", "Sosromenduran"],
-    Gondokusuman: ["Baciro", "Demangan", "Klitren", "Kotabaru", "Terban"],
-    Gondomanan: ["Ngupasan", "Prawirodirjan"],
-    Jetis: ["Bumijo", "Cokrodiningratan", "Gowongan"],
-    Kotagede: ["Prenggan", "Purbayan", "Rejowinangun"],
-    Kraton: ["Kadipaten", "Panembahan", "Patehan"],
-    Mantrijeron: ["Gedongkiwo", "Mantrijeron", "Suryodiningratan"],
-    Mergangsan: ["Brontokusuman", "Keparakan", "Wirogunan"],
-    Ngampilan: ["Ngampilan", "Notoprajan"],
-    Pakualaman: ["Gunungketur", "Purwokinanti"],
-    Tegalrejo: ["Bener", "Karangwaru", "Kricak", "Tegalrejo"],
-    Umbulharjo: ["Giwangan", "Muja Muju", "Pandeyan", "Semaki", "Sorosutan", "Tahunan", "Warungboto"],
-    Wirobrajan: ["Pakuncen", "Patangpuluhan", "Wirobrajan"],
-  };
-
-  const getKelurahanOptions = (kecamatan) => {
-    return (kelurahanByKecamatan[kecamatan] || []).map((k) => ({
-      value: k,
-      label: k,
-    }));
-  };
-
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
@@ -1370,34 +1330,19 @@ export default function AssetFormModal({
                       size="lg"
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                      <FormSelect
-                        label="Kecamatan"
-                        name="kecamatan"
-                        value={formData.kecamatan}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setFormData((prev) => ({
-                            ...prev,
-                            kecamatan: e.target.value,
-                            desa_kelurahan: "",
-                          }));
-                        }}
-                        options={kecamatanOptions}
-                        placeholder="Pilih Kecamatan"
-                        size="lg"
-                      />
-                      <FormSelect
-                        label="Desa/Kelurahan"
-                        name="desa_kelurahan"
-                        value={formData.desa_kelurahan}
+                    <IndonesiaRegionFields
+                      values={formData}
+                      onChange={(regionValues) => setFormData((prev) => ({
+                        ...prev,
+                        ...regionValues,
+                      }))}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <FormInput
+                        label="Dusun"
+                        name="dusun"
+                        value={formData.dusun}
                         onChange={handleInputChange}
-                        options={getKelurahanOptions(formData.kecamatan)}
-                        placeholder={
-                          formData.kecamatan
-                            ? "Pilih Kelurahan"
-                            : "Pilih kecamatan dulu"
-                        }
                         size="lg"
                       />
                       <FormSelect
@@ -1661,42 +1606,20 @@ export default function AssetFormModal({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                    <FormInput label="Dusun" name="dusun" value={formData.dusun} onChange={handleInputChange} size="lg" />
-                    <FormInput label="Kabupaten/Kota" name="kabupaten_kota" value={formData.kabupaten_kota} onChange={handleInputChange} size="lg" />
-                    <FormInput label="Provinsi" name="provinsi" value={formData.provinsi} onChange={handleInputChange} size="lg" />
-                  </div>
+                  <IndonesiaRegionFields
+                    values={formData}
+                    onChange={(regionValues) => setFormData((prev) => ({
+                      ...prev,
+                      ...regionValues,
+                    }))}
+                  />
 
-                  {/* Kecamatan, Desa/Kelurahan, Penggunaan */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <FormSelect
-                      label="Kecamatan"
-                      name="kecamatan"
-                      value={formData.kecamatan}
-                      onChange={(e) => {
-                        handleInputChange(e);
-                        // Reset kelurahan when kecamatan changes
-                        setFormData((prev) => ({
-                          ...prev,
-                          kecamatan: e.target.value,
-                          desa_kelurahan: "",
-                        }));
-                      }}
-                      options={kecamatanOptions}
-                      placeholder="Pilih Kecamatan"
-                      size="lg"
-                    />
-                    <FormSelect
-                      label="Desa/Kelurahan"
-                      name="desa_kelurahan"
-                      value={formData.desa_kelurahan}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <FormInput
+                      label="Dusun"
+                      name="dusun"
+                      value={formData.dusun}
                       onChange={handleInputChange}
-                      options={getKelurahanOptions(formData.kecamatan)}
-                      placeholder={
-                        formData.kecamatan
-                          ? "Pilih Kelurahan"
-                          : "Pilih kecamatan dulu"
-                      }
                       size="lg"
                     />
                     <FormSelect

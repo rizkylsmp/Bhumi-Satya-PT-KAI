@@ -1225,6 +1225,7 @@ export default function LandingPage() {
                   assets={mapAssets}
                   allAssets={mapAssets}
                   mode="integrated"
+                  autoFitInitial2d
                   highlightAssetId={focusedAsset?.id || null}
                   highlightRequestKey={
                     focusedAsset ? `landing-${focusedAsset.id}` : null

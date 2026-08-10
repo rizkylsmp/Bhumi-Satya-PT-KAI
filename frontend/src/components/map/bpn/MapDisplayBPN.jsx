@@ -406,6 +406,7 @@ const MapDisplayBPN = ({
   mode = "bpn",
   initialCenter = DEFAULT_MAP_CENTER,
   initialZoom = DEFAULT_MAP_ZOOM,
+  autoFitInitial2d = false,
   highlightAssetId = null,
   highlightRequestKey = null,
   focus3dTarget = null,
@@ -447,6 +448,7 @@ const MapDisplayBPN = ({
   const lastHandledHighlightRef = useRef(null);
   const lastHandledFocus3dRef = useRef(null);
   const lastAutoFocused3dLoadRef = useRef(null);
+  const hasAutoFitInitial2dRef = useRef(false);
   const lastClearSelectionKeyRef = useRef(clearSelectionKey);
   const hoveredBidangId = useRef(null);
   const hoveredAsset3dId = useRef(null);
@@ -832,6 +834,59 @@ const MapDisplayBPN = ({
   useEffect(() => {
     bidangTanahGeoJsonRef.current = bidangTanahGeoJson;
   }, [bidangTanahGeoJson]);
+
+  useEffect(() => {
+    if (
+      !autoFitInitial2d
+      || hasAutoFitInitial2dRef.current
+      || !map.current
+      || !isMapReady
+      || isAsset3dMode
+      || highlightAssetId != null
+      || focus3dTarget
+    ) {
+      return;
+    }
+
+    const polygonCoordinates = bidangTanahGeoJson.features.flatMap(
+      (feature) => feature?.geometry?.coordinates?.[0] || [],
+    );
+    const pointCoordinates = visibleDotGeoJson.features
+      .map((feature) => feature?.geometry?.coordinates)
+      .filter((coordinates) => Array.isArray(coordinates));
+    const coordinates = polygonCoordinates.length > 0
+      ? polygonCoordinates
+      : pointCoordinates;
+    const validCoordinates = coordinates.filter(([lng, lat]) =>
+      isValidLngLat(Number(lng), Number(lat)));
+
+    if (validCoordinates.length === 0) return;
+
+    const bounds = new maplibregl.LngLatBounds();
+    validCoordinates.forEach(([lng, lat]) => bounds.extend([Number(lng), Number(lat)]));
+    if (bounds.isEmpty()) return;
+
+    hasAutoFitInitial2dRef.current = true;
+    if (validCoordinates.length === 1) {
+      map.current.jumpTo({ center: validCoordinates[0], zoom: Math.max(initialZoom, 16) });
+      return;
+    }
+
+    map.current.fitBounds(bounds, {
+      padding: { top: 64, right: 48, bottom: 48, left: 48 },
+      maxZoom: 16,
+      duration: 0,
+    });
+  }, [
+    autoFitInitial2d,
+    bidangTanahGeoJson,
+    focus3dTarget,
+    highlightAssetId,
+    initialZoom,
+    isAsset3dMode,
+    isMapReady,
+    visibleDotGeoJson,
+  ]);
 
   useEffect(() => {
     analysisStateRef.current = {

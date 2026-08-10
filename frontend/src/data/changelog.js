@@ -1,5 +1,23 @@
 export const changelogEntries = [
   {
+    id: "cascading-indonesia-region-fields",
+    date: "2026-08-10",
+    type: "peningkatan",
+    title: "Menghubungkan pilihan wilayah Indonesia",
+    summary:
+      "Data Fisik kini menyediakan pilihan Provinsi, Kabupaten/Kota, Kecamatan, dan Desa/Kelurahan yang saling mengikuti berdasarkan hierarki wilayah Indonesia.",
+    area: "Data Fisik",
+  },
+  {
+    id: "landing-map-fit-2d-data",
+    date: "2026-08-10",
+    type: "peningkatan",
+    title: "Memusatkan peta landing pada data 2D",
+    summary:
+      "Tampilan awal peta 2D pada landing page kini otomatis menyesuaikan area seluruh bidang yang tersedia, dengan titik aset sebagai fallback.",
+    area: "Digital Twin",
+  },
+  {
     id: "keep-2d-parcels-visible-on-selection",
     date: "2026-08-10",
     type: "perbaikan",
