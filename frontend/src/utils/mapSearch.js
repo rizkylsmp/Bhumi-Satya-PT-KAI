@@ -7,6 +7,7 @@ const SKIPPED_NESTED_KEYS = new Set([
   "public_url",
   "original_public_url",
   "signed_url",
+  "lod",
 ]);
 
 const FIELD_LABELS = {
@@ -36,7 +37,6 @@ const FIELD_LABELS = {
   longitude: "Longitude",
   location_lat: "Latitude Model",
   location_long: "Longitude Model",
-  lod: "LOD",
   model_type: "Jenis Model",
   format: "Format Model",
   conversion_status: "Status Konversi",
@@ -52,6 +52,52 @@ export function normalizeMapSearchText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("id")
     .trim();
+}
+
+export function getBhumiAtrSearchPayload(asset = {}) {
+  const nib = String(asset?.nib ?? "").trim();
+  if (nib) {
+    return {
+      type: "NIB",
+      value: nib,
+    };
+  }
+
+  const model = asset?.active_model_3d || {};
+  const firstCoordinateValue = (...values) => values.find((value) =>
+    value !== null
+    && value !== undefined
+    && String(value).trim() !== "");
+  const rawLatitude = firstCoordinateValue(
+    asset?.koordinat_lat,
+    asset?.latitude,
+    asset?.lat,
+    model?.location_lat,
+  );
+  const rawLongitude = firstCoordinateValue(
+    asset?.koordinat_long,
+    asset?.longitude,
+    asset?.lng,
+    model?.location_long,
+  );
+  const latitude = Number(rawLatitude);
+  const longitude = Number(rawLongitude);
+
+  if (
+    !Number.isFinite(latitude)
+    || !Number.isFinite(longitude)
+    || latitude < -90
+    || latitude > 90
+    || longitude < -180
+    || longitude > 180
+  ) {
+    return null;
+  }
+
+  return {
+    type: "koordinat",
+    value: `${String(rawLongitude).trim()}, ${String(rawLatitude).trim()}`,
+  };
 }
 
 function humanizeFieldName(key) {

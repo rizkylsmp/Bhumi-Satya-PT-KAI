@@ -235,9 +235,16 @@ export const getForMasyarakat = async (req, res) => {
 
     if (status) where.status = status;
 
-    const allowedSortFields = new Set(["created_at", "updated_at", "status", "nama_aset"]);
+    const allowedSortFields = new Set([
+      "nama_pemohon",
+      "nama_aset",
+      "tujuan_sewa",
+      "status",
+      "created_at",
+      "updated_at",
+    ]);
     const safeSortBy = allowedSortFields.has(sortBy) ? sortBy : "created_at";
-    const safeSortOrder = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+    const safeSortOrder = String(sortOrder).toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const { rows: data, count: total } = await PermintaanSewa.findAndCountAll({
       where,
@@ -260,7 +267,10 @@ export const getForMasyarakat = async (req, res) => {
           ],
         },
       ],
-      order: [[safeSortBy, safeSortOrder]],
+      order: [
+        [safeSortBy, safeSortOrder],
+        ["id_permintaan", safeSortOrder],
+      ],
       limit: Number(limit),
       offset,
     });
@@ -309,6 +319,17 @@ export const getAll = async (req, res) => {
 
     if (status) where.status = status;
 
+    const allowedSortFields = new Set([
+      "nama_pemohon",
+      "nama_aset",
+      "tujuan_sewa",
+      "status",
+      "created_at",
+      "updated_at",
+    ]);
+    const safeSortBy = allowedSortFields.has(sortBy) ? sortBy : "created_at";
+    const safeSortOrder = String(sortOrder).toUpperCase() === "ASC" ? "ASC" : "DESC";
+
     const { rows: data, count: total } = await PermintaanSewa.findAndCountAll({
       where,
       include: [
@@ -318,7 +339,10 @@ export const getAll = async (req, res) => {
           attributes: ["id_sewa", "nama_aset", "no_lot", "status"],
         },
       ],
-      order: [[sortBy, sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]],
+      order: [
+        [safeSortBy, safeSortOrder],
+        ["id_permintaan", safeSortOrder],
+      ],
       limit: Number(limit),
       offset,
     });

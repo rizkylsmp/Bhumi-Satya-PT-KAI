@@ -34,12 +34,23 @@ export const getAll = async (req, res) => {
 
     // Pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    const safeOrder = String(order).toUpperCase() === "ASC" ? "ASC" : "DESC";
+    const directSortFields = new Set([
+      "created_at",
+      "aksi",
+      "tabel",
+      "keterangan",
+    ]);
+    const historyOrder = sort === "user"
+      ? [[{ model: User, as: "user" }, "username", safeOrder]]
+      : [[directSortFields.has(sort) ? sort : "created_at", safeOrder]];
+    historyOrder.push(["id_riwayat", safeOrder]);
 
     const { count, rows: riwayat } = await Riwayat.findAndCountAll({
       where,
       limit: parseInt(limit),
       offset,
-      order: [[sort, order.toUpperCase()]],
+      order: historyOrder,
       include: [
         {
           model: User,

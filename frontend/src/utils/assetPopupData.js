@@ -196,7 +196,6 @@ export const buildAssetPopupData = (asset = {}, modelOverride = null) => {
             firstValue(model?.height, asset.building_height_m),
             "height",
           ],
-          ["LOD", firstValue(model?.lod, asset.model_3d_lod)],
           [
             "Status Model",
             model ? (model.is_active === false ? "Belum aktif" : "Aktif") : null,
@@ -325,14 +324,12 @@ export const buildAssetPopupData = (asset = {}, modelOverride = null) => {
       available: Boolean(
         model ||
         hasPopupValue(buildingName) ||
-        hasPopupValue(asset.model_3d_lod) ||
         hasPopupValue(asset.building_height_m) ||
         hasPopupValue(asset.building_floors),
       ),
       recordAvailable: Boolean(model),
       id: model?.id_model_3d || null,
       name: buildingName,
-      lod: firstValue(model?.lod, asset.model_3d_lod),
       version: firstValue(model?.version),
       format: firstValue(model?.format, model?.model_type),
       height: firstValue(asset.building_height_m),

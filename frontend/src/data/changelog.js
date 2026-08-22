@@ -1,5 +1,41 @@
 export const changelogEntries = [
   {
+    id: "hide-orthophoto-sidebar-menu",
+    date: "2026-08-22",
+    type: "perbaikan",
+    title: "Menyembunyikan menu Kelola Orthophoto",
+    summary:
+      "Menu Kelola Orthophoto yang masih dalam pengembangan kini tidak lagi ditampilkan di sidebar.",
+    area: "Navigasi",
+  },
+  {
+    id: "bhumi-atr-map-search-link",
+    date: "2026-08-22",
+    type: "peningkatan",
+    title: "Menghubungkan pencarian ke BHUMI ATR",
+    summary:
+      "Setiap hasil pencarian Digital Twin kini dapat menyalin NIB atau koordinat aset lalu membuka peta resmi BHUMI ATR/BPN di tab baru.",
+    area: "Digital Twin",
+  },
+  {
+    id: "single-model-3d-workflow",
+    date: "2026-08-22",
+    type: "peningkatan",
+    title: "Menyederhanakan impor model 3D",
+    summary:
+      "Kelola 3D dan Digital Twin kini memakai satu alur model per bangunan: impor cukup sekali tanpa memilih LOD, sementara versi aktif dipilih langsung untuk ditampilkan di peta.",
+    area: "Pusat Data Bangunan & Digital Twin",
+  },
+  {
+    id: "global-table-sorting-before-pagination",
+    date: "2026-08-20",
+    type: "perbaikan",
+    title: "Mengurutkan seluruh data tabel",
+    summary:
+      "Pengurutan kolom kini diterapkan ke seluruh hasil data sebelum dibagi ke halaman, sehingga urutan tetap konsisten saat berpindah pagination.",
+    area: "Tabel Data",
+  },
+  {
     id: "cascading-indonesia-region-fields",
     date: "2026-08-10",
     type: "peningkatan",

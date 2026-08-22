@@ -80,6 +80,7 @@ export default function RiwayatPage() {
     initialKey: "created_at",
     initialDirection: "desc",
     getValue: getHistorySortValue,
+    manual: true,
   });
 
   // Fetch activities
@@ -89,6 +90,8 @@ export default function RiwayatPage() {
       const params = {
         page: pagination.page,
         limit: pagination.limit,
+        sort: sortKey,
+        order: sortDirection,
       };
 
       if (filters.jenis) params.aksi = filters.jenis;
@@ -130,7 +133,14 @@ export default function RiwayatPage() {
     filters.jenis,
     filters.tanggalMulai,
     filters.tanggalAkhir,
+    sortKey,
+    sortDirection,
   ]);
+
+  const handleTableSort = (key) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    requestSort(key);
+  };
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -517,7 +527,7 @@ export default function RiwayatPage() {
                     columnKey="created_at"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.created_at}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -530,7 +540,7 @@ export default function RiwayatPage() {
                     columnKey="user"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.user}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -543,7 +553,7 @@ export default function RiwayatPage() {
                     columnKey="aksi"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.aksi}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -555,7 +565,7 @@ export default function RiwayatPage() {
                     columnKey="tabel"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.tabel}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -568,7 +578,7 @@ export default function RiwayatPage() {
                     columnKey="keterangan"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.keterangan}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}

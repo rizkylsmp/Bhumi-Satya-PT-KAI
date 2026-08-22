@@ -81,6 +81,7 @@ export default function UserManagementPage() {
   } = useTableSort(users, {
     initialKey: "nama_lengkap",
     getValue: getUserSortValue,
+    manual: true,
   });
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -105,6 +106,8 @@ export default function UserManagementPage() {
       const params = {
         page,
         limit,
+        sort: sortKey,
+        order: sortDirection,
         ...(searchTerm && { search: searchTerm }),
         ...(filterRole && { role: filterRole }),
       };
@@ -123,7 +126,12 @@ export default function UserManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, filterRole, page, limit]);
+  }, [searchTerm, filterRole, page, limit, sortKey, sortDirection]);
+
+  const handleTableSort = (key) => {
+    setPage(1);
+    requestSort(key);
+  };
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -579,7 +587,7 @@ export default function UserManagementPage() {
                     columnKey="nama_lengkap"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.nama_lengkap}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -591,7 +599,7 @@ export default function UserManagementPage() {
                     columnKey="username"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.username}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}
@@ -603,7 +611,7 @@ export default function UserManagementPage() {
                     columnKey="email"
                     sortKey={sortKey}
                     sortDirection={sortDirection}
-                    onSort={requestSort}
+                    onSort={handleTableSort}
                     width={columnWidths.email}
                     onResizeStart={onResizeStart}
                     onResizeBy={resizeColumn}

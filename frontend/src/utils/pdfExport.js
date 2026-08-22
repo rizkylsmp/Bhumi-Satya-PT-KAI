@@ -811,7 +811,6 @@ export function buildBuildingPdfDocument(catalog) {
         rows: buildRows([
           ["Status Model", humanizeValue(catalog?.model_status)],
           ["Jumlah Versi", catalog?.model_count],
-          ["LOD Aktif", activeModel?.lod],
           ["Versi Aktif", activeModel?.version],
           ["Format", catalog?.model_format || activeModel?.format || activeModel?.model_type],
           ["Nama File", activeModel?.original_name],

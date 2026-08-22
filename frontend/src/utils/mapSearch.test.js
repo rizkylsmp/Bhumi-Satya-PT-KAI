@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMapSearchEntries,
+  getBhumiAtrSearchPayload,
   searchMapRecords,
   splitMapSearchHighlight,
 } from "./mapSearch";
@@ -29,7 +30,6 @@ describe("map search", () => {
     expect(entries).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: "Kode 2D", value: "2D-STPN-01" }),
       expect.objectContaining({ label: "Nama Bangunan", value: "Gedung Aula Barat" }),
-      expect.objectContaining({ label: "LOD", value: "LOD2" }),
     ]));
   });
 
@@ -46,5 +46,48 @@ describe("map search", () => {
       { text: "Aula", highlighted: true },
       { text: " Barat", highlighted: false },
     ]);
+  });
+
+  it("prioritizes NIB for the BHUMI ATR search", () => {
+    expect(getBhumiAtrSearchPayload({
+      nib: " 34040100001234 ",
+      koordinat_lat: -7.8,
+      koordinat_long: 110.3,
+    })).toEqual({
+      type: "NIB",
+      value: "34040100001234",
+    });
+  });
+
+  it("falls back to longitude and latitude for the BHUMI ATR search", () => {
+    expect(getBhumiAtrSearchPayload({
+      koordinat_lat: "-7.8101",
+      koordinat_long: "110.3612",
+    })).toEqual({
+      type: "koordinat",
+      value: "110.3612, -7.8101",
+    });
+  });
+
+  it("uses model coordinates only when asset coordinates are unavailable", () => {
+    expect(getBhumiAtrSearchPayload({
+      koordinat_lat: "",
+      koordinat_long: null,
+      active_model_3d: {
+        location_lat: -7.81,
+        location_long: 110.36,
+      },
+    })).toEqual({
+      type: "koordinat",
+      value: "110.36, -7.81",
+    });
+  });
+
+  it("returns no BHUMI ATR payload for invalid coordinates", () => {
+    expect(getBhumiAtrSearchPayload({
+      koordinat_lat: 95,
+      koordinat_long: 110.36,
+    })).toBeNull();
+    expect(getBhumiAtrSearchPayload({})).toBeNull();
   });
 });

@@ -40,13 +40,26 @@ export const getAll = async (req, res) => {
 
     // Pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    const allowedSortFields = new Set([
+      "nama_lengkap",
+      "username",
+      "email",
+      "role",
+      "status_aktif",
+      "created_at",
+      "updated_at",
+    ]);
+    const safeSort = allowedSortFields.has(sort) ? sort : "created_at";
+    const safeOrder = String(order).toUpperCase() === "ASC" ? "ASC" : "DESC";
+    const userOrder = [[safeSort, safeOrder]];
+    userOrder.push(["id_user", safeOrder]);
 
     const { count, rows: users } = await User.findAndCountAll({
       where,
       attributes: { exclude: ["password"] },
       limit: parseInt(limit),
       offset,
-      order: [[sort, order.toUpperCase()]],
+      order: userOrder,
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));

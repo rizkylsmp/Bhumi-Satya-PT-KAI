@@ -129,7 +129,7 @@ export const processModel3dConversion = async (model) => {
         mediumLod = await uploadLod("medium", lods.medium);
         lowLod = await uploadLod("low", lods.low);
       } catch (error) {
-        optimizationError = String(error.message || "Unggah LOD gagal").slice(0, 2000);
+        optimizationError = String(error.message || "Optimasi model gagal").slice(0, 2000);
         await Promise.all(uploadedLodPaths.map((path) => deleteFromSupabase(path).catch(() => {})));
         uploadedLodPaths.length = 0;
         mediumLod = null;
@@ -183,7 +183,7 @@ export const processModel3dConversion = async (model) => {
       id_referensi: model.id_model_3d,
       data_lama: oldData,
       data_baru: serializeForAudit(model),
-      keterangan: `Sistem menyiapkan model 3D aset ${model.id_aset} versi ${model.version} sebagai GLB${mediumLod || lowLod ? " dan LOD turunan" : ""}`,
+      keterangan: `Sistem menyiapkan model 3D aset ${model.id_aset} versi ${model.version} sebagai GLB${mediumLod || lowLod ? " beserta hasil optimasi" : ""}`,
       user_id: model.uploaded_by,
       req: null,
     });

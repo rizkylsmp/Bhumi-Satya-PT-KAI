@@ -88,7 +88,6 @@ export function normalizeMapMarker(marker) {
     building_floors: marker.building_floors ?? null,
     building_height_source: marker.building_height_source || null,
     building_height_quality: marker.building_height_quality || null,
-    model_3d_lod: marker.model_3d_lod || null,
     model_3d_source_crs: marker.model_3d_source_crs || null,
     model_3d_recorded_at: marker.model_3d_recorded_at || null,
     model_3d_accuracy_m: marker.model_3d_accuracy_m ?? null,

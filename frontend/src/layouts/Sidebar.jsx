@@ -33,7 +33,6 @@ import {
   BuildingsIcon,
   IdentificationCardIcon,
   ReceiptIcon,
-  ImageIcon,
   FilmStripIcon,
 } from "@phosphor-icons/react";
 
@@ -138,7 +137,7 @@ export default function Sidebar({
       label: "Dashboard",
       path: "/dashboard",
     },
-    (canAccessMenu(userRole, "peta") || canAccessMenu(userRole, "aset")) && {
+    canAccessMenu(userRole, "peta") && {
       id: "peta",
       icon: MapTrifoldIcon,
       label: "Peta",
@@ -147,14 +146,6 @@ export default function Sidebar({
           icon: CubeIcon,
           label: "Digital Twin",
           path: "/peta",
-        },
-        canAccessMenu(userRole, "aset") && {
-          icon: ImageIcon,
-          label: "Kelola Orthophoto",
-          path: "/orthophoto",
-          disabled: true,
-          status: "Dev",
-          description: "Dalam proses pengembangan",
         },
       ].filter(Boolean),
     },

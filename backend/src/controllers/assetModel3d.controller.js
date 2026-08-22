@@ -44,23 +44,9 @@ class ModelUploadValidationError extends Error {
   }
 }
 
-const MODEL_LODS = new Set([
-  "LOD1",
-  "LOD2",
-  "LOD2.5",
-  "LOD3",
-  "LOD4",
-  "GAUSSIAN_SPLATTING",
-]);
-
-export const normalizeModelLod = (value) => {
-  if (value == null || String(value).trim() === "") return "LOD1";
-  const lod = String(value || "").trim().toUpperCase();
-  if (!MODEL_LODS.has(lod)) {
-    throw new ModelUploadValidationError("Level of Detail model tidak valid");
-  }
-  return lod;
-};
+// The column is retained for backward-compatible storage, but the application
+// now exposes one model stream per building and never asks users to choose LOD.
+export const normalizeModelLod = () => "LOD1";
 
 const collectCoordinatePairs = (value, pairs = []) => {
   if (!Array.isArray(value)) return pairs;
@@ -142,7 +128,7 @@ export const list = async (req, res) => {
         id_aset: asset.id_aset,
         ...(kode3d ? { kode_3d: kode3d } : {}),
       },
-      order: [["lod", "ASC"], ["version", "DESC"]],
+      order: [["version", "DESC"], ["id_model_3d", "DESC"]],
     });
     return res.json({ success: true, data: models.map(serializeModel) });
   } catch (error) {
@@ -226,7 +212,7 @@ export const upload = async (req, res) => {
       });
     }
     if (!req.file) return res.status(400).json({ success: false, error: "File KMZ, GLB, atau ZIP 3D Tiles diperlukan" });
-    const lod = normalizeModelLod(req.body?.lod);
+    const lod = normalizeModelLod();
 
     const originalName = req.file.originalname || "model.glb";
     const extension = originalName.split(".").pop()?.toLowerCase();
@@ -316,7 +302,6 @@ export const upload = async (req, res) => {
     const duplicate = await AsetModel3d.findOne({
       where: {
         kode_3d: catalog.kode_3d,
-        lod,
         checksum_sha256: checksum,
         archived_at: null,
       },
@@ -330,13 +315,12 @@ export const upload = async (req, res) => {
     }
 
     const latestVersion = Number(await AsetModel3d.max("version", {
-      where: { kode_3d: catalog.kode_3d, lod },
+      where: { kode_3d: catalog.kode_3d },
     })) || 0;
     const version = latestVersion + 1;
     const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const lodPath = lod.toLowerCase().replace(/[^a-z0-9.-]/g, "-");
     const catalogPath = catalog.kode_3d.toLowerCase().replace(/[^a-z0-9.-]/g, "-");
-    const uploadedStoragePath = `model-3d/${catalogPath}/${lodPath}/v${version}-${Date.now()}-${safeName}`;
+    const uploadedStoragePath = `model-3d/${catalogPath}/v${version}-${Date.now()}-${safeName}`;
     const mimeType = extension === "glb"
       ? "model/gltf-binary"
       : extension === "zip"
@@ -353,7 +337,7 @@ export const upload = async (req, res) => {
     let packageRootPublicUrl = null;
     const packageStoragePaths = [];
     if (packageFiles) {
-      const packagePrefix = `model-3d/${catalogPath}/${lodPath}/v${version}-tiles`;
+      const packagePrefix = `model-3d/${catalogPath}/v${version}-tiles`;
       const entries = [...packageFiles.entries()];
       for (let index = 0; index < entries.length; index += 12) {
         const batch = entries.slice(index, index + 12);
@@ -438,7 +422,7 @@ export const upload = async (req, res) => {
       tabel: "aset_model_3d",
       id_referensi: model.id_model_3d,
       data_baru: serializeModel(model),
-      keterangan: `Mengunggah model 3D ${lod} versi ${version} untuk aset ${asset.nama_aset}`,
+      keterangan: `Mengunggah model 3D versi ${version} untuk aset ${asset.nama_aset}`,
       user_id: req.user.id_user,
       req,
     });
@@ -553,7 +537,6 @@ export const activate = async (req, res) => {
         {
           where: {
             kode_3d: model.kode_3d,
-            lod: model.lod,
             is_active: true,
           },
           transaction,
@@ -570,13 +553,13 @@ export const activate = async (req, res) => {
       id_referensi: model.id_model_3d,
       data_lama: oldData,
       data_baru: serializeModel(model),
-      keterangan: `Mengaktifkan model 3D ${model.lod} aset ${model.id_aset} versi ${model.version}`,
+      keterangan: `Mengaktifkan model 3D aset ${model.id_aset} versi ${model.version}`,
       user_id: req.user.id_user,
       req,
     });
     return res.json({
       success: true,
-      message: `Model ${model.lod} berhasil diaktifkan`,
+      message: `Model versi ${model.version} berhasil diaktifkan`,
       data: serializeModel(model),
     });
   } catch (error) {
@@ -800,7 +783,6 @@ export const restore = async (req, res) => {
       const activeModel = await AsetModel3d.findOne({
         where: {
           kode_3d: model.kode_3d,
-          lod: model.lod,
           is_active: true,
           archived_at: null,
         },
@@ -871,7 +853,6 @@ export const removePermanent = async (req, res) => {
           where: {
             id_model_3d: { [Op.ne]: model.id_model_3d },
             kode_3d: model.kode_3d,
-            lod: model.lod,
             archived_at: null,
             conversion_status: "ready",
             converted_public_url: { [Op.ne]: null },

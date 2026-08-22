@@ -1,4 +1,3 @@
-const ALLOWED_LODS = new Set(["LOD0", "LOD1", "LOD2"]);
 const ALLOWED_SOURCES = new Set([
   "survey",
   "lidar",
@@ -125,13 +124,6 @@ export const normalizeAsset3dFields = (payload = {}, { partial = false } = {}) =
     "building_height_quality",
     optionalEnum(payload.building_height_quality, "Kualitas tinggi bangunan", ALLOWED_QUALITIES),
   );
-  assign(
-    "model_3d_lod",
-    optionalEnum(payload.model_3d_lod, "Level of Detail", ALLOWED_LODS, (value) =>
-      value.toUpperCase(),
-    ),
-  );
-
   if (!partial || hasOwn(payload, "model_3d_source_crs")) {
     const crs = payload.model_3d_source_crs;
     if (crs === undefined) result.model_3d_source_crs = undefined;

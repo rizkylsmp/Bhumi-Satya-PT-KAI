@@ -25,6 +25,25 @@ const publicMarkersCacheTtlMs = Number.isFinite(
   : 60_000;
 let publicMarkersCache = { data: null, expiresAt: 0 };
 
+export const selectOneModelPerBuilding = (models = []) => {
+  const selected = new Map();
+  models.forEach((model) => {
+    const key = String(model?.kode_3d || model?.id_model_3d || "");
+    const current = selected.get(key);
+    if (
+      !current
+      || Number(model?.version || 0) > Number(current?.version || 0)
+      || (
+        Number(model?.version || 0) === Number(current?.version || 0)
+        && Number(model?.id_model_3d || 0) > Number(current?.id_model_3d || 0)
+      )
+    ) {
+      selected.set(key, model);
+    }
+  });
+  return [...selected.values()];
+};
+
 const sendPublicMarkers = (res, markers, cacheStatus) => {
   res.setHeader(
     "Cache-Control",
@@ -184,14 +203,17 @@ export const getModel3dTileset = async (req, res) => {
       }],
       order: [["id_aset", "ASC"]],
     });
-    const tileset = createModel3dTileset(models.map((model) => {
+    const normalizedModels = models.map((model) => {
       const value = model.toJSON();
       return {
         ...value,
         location_lat: value.location_lat ?? value.aset?.koordinat_lat,
         location_long: value.location_long ?? value.aset?.koordinat_long,
       };
-    }));
+    });
+    const tileset = createModel3dTileset(
+      selectOneModelPerBuilding(normalizedModels),
+    );
     if (!tileset) {
       return res.status(404).json({ success: false, error: "Belum ada model 3D aktif untuk tileset" });
     }
@@ -264,7 +286,6 @@ export const getPublicMarkers = async (req, res) => {
         "building_floors",
         "building_height_source",
         "building_height_quality",
-        "model_3d_lod",
         "model_3d_source_crs",
         "model_3d_recorded_at",
         "model_3d_accuracy_m",
@@ -313,7 +334,6 @@ export const getPublicMarkers = async (req, res) => {
           attributes: [
             "id_model_3d",
             "kode_3d",
-            "lod",
             "version",
             "format",
             "model_type",
@@ -362,7 +382,7 @@ export const getPublicMarkers = async (req, res) => {
       const buildingProfilesByCode = Object.fromEntries(
         (plain.catalogs3d || []).map((catalog) => [catalog.kode_3d, catalog]),
       );
-      const activeModels3d = (plain.models3d || []).map((model) => ({
+      const activeModels3d = selectOneModelPerBuilding(plain.models3d).map((model) => ({
         ...model,
         building_name: buildingNamesByCode[model.kode_3d] || model.kode_3d,
         ...buildingProfilesByCode[model.kode_3d],
@@ -419,7 +439,6 @@ export const getPublicMarkers = async (req, res) => {
         building_floors: plain.building_floors || null,
         building_height_source: plain.building_height_source || null,
         building_height_quality: plain.building_height_quality || null,
-        model_3d_lod: plain.model_3d_lod || null,
         model_3d_source_crs: plain.model_3d_source_crs || null,
         model_3d_recorded_at: plain.model_3d_recorded_at || null,
         model_3d_accuracy_m: plain.model_3d_accuracy_m
@@ -587,7 +606,6 @@ export const getMarkers = async (req, res) => {
         "building_floors",
         "building_height_source",
         "building_height_quality",
-        "model_3d_lod",
         "model_3d_source_crs",
         "model_3d_recorded_at",
         "model_3d_accuracy_m",
@@ -649,7 +667,6 @@ export const getMarkers = async (req, res) => {
           attributes: [
             "id_model_3d",
             "kode_3d",
-            "lod",
             "version",
             "format",
             "model_type",
@@ -705,7 +722,7 @@ export const getMarkers = async (req, res) => {
       const buildingProfilesByCode = Object.fromEntries(
         (plain.catalogs3d || []).map((catalog) => [catalog.kode_3d, catalog]),
       );
-      const activeModels3d = (plain.models3d || []).map((model) => {
+      const activeModels3d = selectOneModelPerBuilding(plain.models3d).map((model) => {
         const buildingSewa = (plain.sewas || []).find(
           (sewa) =>
             sewa.kode_3d === model.kode_3d
@@ -772,7 +789,6 @@ export const getMarkers = async (req, res) => {
         building_floors: plain.building_floors || null,
         building_height_source: plain.building_height_source || null,
         building_height_quality: plain.building_height_quality || null,
-        model_3d_lod: plain.model_3d_lod || null,
         model_3d_source_crs: plain.model_3d_source_crs || null,
         model_3d_recorded_at: plain.model_3d_recorded_at || null,
         model_3d_accuracy_m: plain.model_3d_accuracy_m

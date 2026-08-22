@@ -3,17 +3,10 @@ import { describe, it } from "node:test";
 import { normalizeModelLod } from "./assetModel3d.controller.js";
 
 describe("asset model 3D upload defaults", () => {
-  it("uses the internal default when an upload does not include an LOD", () => {
+  it("uses one internal compatibility value for every upload", () => {
     assert.equal(normalizeModelLod(undefined), "LOD1");
     assert.equal(normalizeModelLod(null), "LOD1");
     assert.equal(normalizeModelLod("   "), "LOD1");
-  });
-
-  it("keeps validating legacy uploads that explicitly include an LOD", () => {
-    assert.equal(normalizeModelLod("lod2"), "LOD2");
-    assert.throws(
-      () => normalizeModelLod("unknown"),
-      /Level of Detail model tidak valid/,
-    );
+    assert.equal(normalizeModelLod("LOD2"), "LOD1");
   });
 });

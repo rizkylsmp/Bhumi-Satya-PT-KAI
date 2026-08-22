@@ -99,6 +99,8 @@ export default function AssetPage() {
       const params = {
         page: currentPage,
         limit: itemsPerPage,
+        sort: sortBy,
+        order: sortOrder,
         ...(searchTerm && { search: searchTerm }),
         ...Object.fromEntries(
           Object.entries(filters).filter(([, value]) => Boolean(value)),
@@ -116,7 +118,7 @@ export default function AssetPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filters, itemsPerPage]);
+  }, [currentPage, searchTerm, filters, itemsPerPage, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchAssets();
@@ -171,6 +173,7 @@ export default function AssetPage() {
   }, []);
 
   const handleSort = (column) => {
+    setCurrentPage(1);
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -266,17 +269,8 @@ export default function AssetPage() {
     }
   };
 
-  // Sorted data
-  const sortedAssets = [...assets].sort((a, b) => {
-    let aVal = a[sortBy];
-    let bVal = b[sortBy];
-    if (sortBy === "luas" || sortBy === "nilai_aset") {
-      aVal = parseFloat(aVal) || 0;
-      bVal = parseFloat(bVal) || 0;
-    }
-    if (sortOrder === "asc") return aVal > bVal ? 1 : -1;
-    return aVal < bVal ? 1 : -1;
-  });
+  // Sorting is applied by the API before pagination.
+  const sortedAssets = assets;
 
   // Table Header component
   const TableHeader = ({

@@ -27,7 +27,6 @@ import BPNLayerControl from "./BPNLayerControl";
 import Model3dControlPanel from "./Model3dControlPanel";
 import Switch from "../../ui/Switch";
 import {
-  getAsset3dSummary,
   hasUsableAsset3dData,
   resolveAssetBuildingHeight,
 } from "../../../utils/asset3dGeojson";
@@ -576,7 +575,6 @@ const MapDisplayBPN = ({
   }, [assets]);
   const model3dLocations = useMemo(
     () => roleAssets.filter(hasUsableAsset3dData).flatMap((asset) => {
-      const summary = getAsset3dSummary(asset);
       const assetId = asset?.id_aset || asset?.id;
       const activeModels = Array.isArray(asset?.active_models_3d)
         && asset.active_models_3d.length > 0
@@ -632,8 +630,7 @@ const MapDisplayBPN = ({
           longitude: offsetLocation.longitude,
           altitude: offsetLocation.altitude,
           radius: model?.converted_bounds?.radius,
-          lod: model?.lod || summary.lod || "LOD1",
-          modelType: model?.model_type || (model?.public_url ? "Model detail" : "Bangunan LOD1"),
+          modelType: model?.model_type || (model?.public_url ? "Model detail" : "Bangunan 3D"),
           conversionStatus: model?.conversion_status || "ready",
           rooms: Array.isArray(model?.manifest?.rooms) ? model.manifest.rooms : [],
         };
@@ -642,23 +639,7 @@ const MapDisplayBPN = ({
     [roleAssets],
   );
   const default3dLocationIds = useMemo(() => {
-    const lod1Locations = model3dLocations.filter(
-      (location) =>
-        String(location.lod || "")
-          .toUpperCase()
-          .replaceAll(" ", "") === "LOD1",
-    );
-    if (lod1Locations.length > 0) {
-      return lod1Locations.map((location) => String(location.id));
-    }
-
-    const fallbackLod = String(model3dLocations[0]?.lod || "").toUpperCase();
-    return model3dLocations
-      .filter(
-        (location) =>
-          String(location.lod || "").toUpperCase() === fallbackLod,
-      )
-      .map((location) => String(location.id));
+    return model3dLocations.map((location) => String(location.id));
   }, [model3dLocations]);
   const resolvedVisible3dLocationIds =
     visible3dLocationIds === undefined
@@ -681,7 +662,7 @@ const MapDisplayBPN = ({
     [renderedVisible3dLocationIds],
   );
   const assetBuildingGeoJson = EMPTY_FEATURE_COLLECTION;
-  // Keep the complete model catalogue mounted in Cesium. LOD/search visibility is
+  // Keep the complete model catalogue mounted in Cesium. Search visibility is
   // changed in-place so selecting a result does not rebuild or blink the map.
   const allAssetsResolved = useMemo(
     () => allAssets || assets || [],

@@ -74,19 +74,19 @@ const Building3dFields = ({
         </button>
         <button
           type="button"
-          id="building3d-tab-lod"
+          id="building3d-tab-metadata"
           role="tab"
-          aria-controls="building3d-panel-lod"
-          aria-selected={active3dSubtab === "lod"}
-          tabIndex={active3dSubtab === "lod" ? 0 : -1}
-          onClick={() => setActive3dSubtab("lod")}
+          aria-controls="building3d-panel-metadata"
+          aria-selected={active3dSubtab === "metadata"}
+          tabIndex={active3dSubtab === "metadata" ? 0 : -1}
+          onClick={() => setActive3dSubtab("metadata")}
           className={`flex-1 rounded-lg px-4 py-2 text-xs font-bold transition sm:flex-none ${
-            active3dSubtab === "lod"
+            active3dSubtab === "metadata"
               ? "bg-accent text-surface"
               : "text-text-muted hover:bg-surface-secondary hover:text-text-primary"
           }`}
         >
-          LOD & Metadata
+          Metadata
         </button>
       </div>
 
@@ -131,14 +131,14 @@ const Building3dFields = ({
       </div>
 
       <div
-        id="building3d-panel-lod"
+        id="building3d-panel-metadata"
         role="tabpanel"
-        aria-labelledby="building3d-tab-lod"
-        hidden={active3dSubtab !== "lod"}
+        aria-labelledby="building3d-tab-metadata"
+        hidden={active3dSubtab !== "metadata"}
         className="space-y-4"
       >
         <p className="mb-4 text-xs font-bold uppercase tracking-wide text-text-muted">
-          LOD dan metadata bangunan
+          Metadata bangunan
         </p>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <FormInput label="Tinggi (m)" name="building_height_m" type="number" min="0.1" max="1000" step="0.01" value={formData.building_height_m} onChange={onChange} size="lg" />
@@ -153,10 +153,6 @@ const Building3dFields = ({
         <FormSelect label="Kualitas" name="building_height_quality" value={formData.building_height_quality} onChange={onChange} placeholder="Pilih kualitas" options={[
           { value: "measured", label: "Terukur" }, { value: "derived", label: "Hasil Turunan" },
           { value: "estimated", label: "Estimasi" },
-        ]} size="lg" />
-        <FormSelect label="Level of Detail" name="model_3d_lod" value={formData.model_3d_lod} onChange={onChange} placeholder="Pilih LOD" options={[
-          { value: "LOD0", label: "LOD0 - Sederhana" }, { value: "LOD1", label: "LOD1 - Blok" },
-          { value: "LOD2", label: "LOD2 - Bentuk Atap" },
         ]} size="lg" />
         <FormInput label="CRS Sumber" name="model_3d_source_crs" value={formData.model_3d_source_crs} onChange={onChange} placeholder="EPSG:32749" size="lg" />
         <FormInput label="Tanggal Perekaman" name="model_3d_recorded_at" type="date" value={formData.model_3d_recorded_at} onChange={onChange} size="lg" />
@@ -457,7 +453,6 @@ const initialFormData = {
   building_floors: "",
   building_height_source: "",
   building_height_quality: "",
-  model_3d_lod: "",
   model_3d_source_crs: "",
   model_3d_recorded_at: "",
   model_3d_accuracy_m: "",
@@ -630,7 +625,6 @@ export default function AssetFormModal({
         building_floors: assetData.building_floors || "",
         building_height_source: assetData.building_height_source || "",
         building_height_quality: assetData.building_height_quality || "",
-        model_3d_lod: assetData.model_3d_lod || "",
         model_3d_source_crs: assetData.model_3d_source_crs || "",
         model_3d_recorded_at: assetData.model_3d_recorded_at || "",
         model_3d_accuracy_m: assetData.model_3d_accuracy_m || "",
@@ -788,7 +782,6 @@ export default function AssetFormModal({
       setModel3dFile(file);
       setFormData((prev) => ({
         ...prev,
-        model_3d_lod: prev.model_3d_lod || "LOD1",
         model_3d_source_crs: prev.model_3d_source_crs || "EPSG:4326",
       }));
       toast.success("Model KMZ siap diunggah setelah aset disimpan");

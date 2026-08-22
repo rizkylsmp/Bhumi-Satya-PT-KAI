@@ -87,7 +87,6 @@ const assetAttributes = [
   "building_floors",
   "building_height_source",
   "building_height_quality",
-  "model_3d_lod",
   "model_3d_source_crs",
   "model_3d_recorded_at",
   "model_3d_accuracy_m",
@@ -98,7 +97,6 @@ const assetAttributes = [
 const modelAttributes = [
   "id_model_3d",
   "kode_3d",
-  "lod",
   "version",
   "is_active",
   "status",
@@ -138,7 +136,7 @@ export const serializeCatalog = (record) => {
     asset: value.aset ? { ...value.aset, models3d: undefined } : null,
     model_count: models.length,
     active_model: activeModel,
-    active_models: models.filter((model) => model.is_active),
+    active_models: activeModel?.is_active ? [activeModel] : [],
     building_name: buildingName,
     jenis_bangunan: value.jenis_bangunan || null,
     material_dinding: value.material_dinding || null,
@@ -171,29 +169,51 @@ const catalogInclude = {
 
 const catalogOrder = (sort, order) => {
   const direction = String(order).toUpperCase() === "ASC" ? "ASC" : "DESC";
+  let result;
   if (sort === "kode_aset" || sort === "nama_aset") {
-    return [[{ model: Aset, as: "aset" }, sort, direction]];
-  }
-  if (sort === "kode_3d") return [["kode_3d", direction]];
-  if (sort === "kode_2d") return [["kode_2d", direction]];
-  if (sort === "status") return [["status", direction]];
-  if (sort === "building_name") {
-    return [[Sequelize.literal(
+    result = [[{ model: Aset, as: "aset" }, sort, direction]];
+  } else if (sort === "lokasi") {
+    result = [[{ model: Aset, as: "aset" }, "lokasi", direction]];
+  } else if (sort === "data_bangunan") {
+    result = [
+      [{ model: Aset, as: "aset" }, "building_floors", direction],
+      [{ model: Aset, as: "aset" }, "building_height_m", direction],
+    ];
+  } else if (sort === "kode_3d") {
+    result = [["kode_3d", direction]];
+  } else if (sort === "kode_2d") {
+    result = [["kode_2d", direction]];
+  } else if (sort === "status") {
+    result = [["status", direction]];
+  } else if (sort === "building_name") {
+    result = [[Sequelize.literal(
       'COALESCE("Aset3dCatalog"."building_name", \'\')',
     ), direction]];
-  }
-  if (sort === "model_updated_at") {
-    return [[Sequelize.literal(`COALESCE((
+  } else if (sort === "model_status") {
+    result = [[Sequelize.literal(`CASE WHEN EXISTS (
+      SELECT 1 FROM "aset_model_3d" status_sort
+      WHERE status_sort."kode_3d" = "Aset3dCatalog"."kode_3d"
+        AND status_sort."archived_at" IS NULL
+        AND status_sort."status" <> 'archived'
+    ) THEN 1 ELSE 0 END`), direction]];
+  } else if (sort === "model_url") {
+    result = [[Sequelize.literal(`CASE WHEN EXISTS (
+      SELECT 1 FROM "aset_model_3d" url_sort
+      WHERE url_sort."kode_3d" = "Aset3dCatalog"."kode_3d"
+        AND url_sort."archived_at" IS NULL
+        AND COALESCE(url_sort."converted_public_url", url_sort."public_url") IS NOT NULL
+    ) THEN 1 ELSE 0 END`), direction]];
+  } else if (sort === "model_updated_at") {
+    result = [[Sequelize.literal(`COALESCE((
       SELECT MAX(sort_model."updated_at")
       FROM "aset_model_3d" sort_model
       WHERE sort_model."kode_3d" = "Aset3dCatalog"."kode_3d"
         AND sort_model."archived_at" IS NULL
     ), "Aset3dCatalog"."updated_at")`), direction]];
-  }
-  if (sort === "center_x" || sort === "center_y") {
+  } else if (sort === "center_x" || sort === "center_y") {
     const modelColumn = sort === "center_x" ? "location_long" : "location_lat";
     const assetColumn = sort === "center_x" ? "koordinat_long" : "koordinat_lat";
-    return [[Sequelize.literal(`COALESCE((
+    result = [[Sequelize.literal(`COALESCE((
       SELECT center_sort."${modelColumn}"
       FROM "aset_model_3d" center_sort
       WHERE center_sort."kode_3d" = "Aset3dCatalog"."kode_3d"
@@ -201,9 +221,13 @@ const catalogOrder = (sort, order) => {
       ORDER BY center_sort."is_active" DESC, center_sort."version" DESC
       LIMIT 1
     ), "aset"."${assetColumn}")`), direction]];
+  } else if (sort === "updated_at") {
+    result = [["updated_at", direction]];
+  } else {
+    result = [["created_at", direction]];
   }
-  if (sort === "updated_at") return [["updated_at", direction]];
-  return [["created_at", direction]];
+  if (sort !== "kode_3d") result.push(["kode_3d", direction]);
+  return result;
 };
 
 const buildCatalogWhere = (query) => {

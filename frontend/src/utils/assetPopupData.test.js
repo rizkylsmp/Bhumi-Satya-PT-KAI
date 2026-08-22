@@ -96,7 +96,6 @@ describe("asset popup data", () => {
     const published = { id_model_3d: 1, lod: "LOD1", version: 1 };
     const selected = {
       id_model_3d: 2,
-      lod: "LOD2",
       version: 3,
       format: "GLB",
       is_active: false,
@@ -110,7 +109,6 @@ describe("asset popup data", () => {
     expect(resolvePopupModel(asset, selected)).toBe(selected);
     expect(buildAssetPopupData(asset, selected).model).toMatchObject({
       id: 2,
-      lod: "LOD2",
       version: 3,
       format: "GLB",
       height: 18,

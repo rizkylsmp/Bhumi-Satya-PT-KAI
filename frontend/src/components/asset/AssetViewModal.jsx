@@ -416,7 +416,7 @@ export default function AssetViewModal({
   const handleDeleteModel3d = async (model) => {
     const confirmed = await confirm({
       title: `Hapus permanen model versi ${model.version}?`,
-      message: "KMZ, GLB, LOD turunan, metadata, dan daftar ruang akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.",
+      message: "File sumber, GLB hasil konversi, metadata, dan daftar ruang akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.",
       confirmText: "Hapus Permanen",
       cancelText: "Batal",
       type: "danger",
@@ -912,7 +912,6 @@ export default function AssetViewModal({
                     </h4>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                    <InfoItem label="LOD" value={asset3d.lod} />
                     <InfoItem label="Tinggi" value={asset3d.height ? `${asset3d.height} m` : "-"} />
                     <InfoItem label="Lantai" value={asset3d.floors} />
                     <InfoItem label="Kualitas" value={asset3d.qualityLabel} />
@@ -923,7 +922,7 @@ export default function AssetViewModal({
                       <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Status</p>
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-primary">
                         <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: HEIGHT_QUALITY_CONFIG[asset3d.quality]?.color || "#94a3b8" }} />
-                        {asset3d.available ? "Siap LOD1" : "Belum lengkap"}
+                        {asset3d.available ? "Siap 3D" : "Belum lengkap"}
                       </span>
                     </div>
                   </div>
@@ -976,26 +975,26 @@ export default function AssetViewModal({
                                 >
                                   {[
                                     {
-                                      label: "LOD tinggi",
+                                      label: "Model utama",
                                       triangles: model.converted_triangle_count,
                                       size: model.converted_size_bytes,
                                     },
                                     {
-                                      label: "LOD sedang",
+                                      label: "Optimasi sedang",
                                       triangles: model.lod_medium_triangle_count,
                                       size: model.lod_medium_size_bytes,
                                     },
                                     {
-                                      label: "LOD ringan",
+                                      label: "Optimasi ringan",
                                       triangles: model.lod_low_triangle_count,
                                       size: model.lod_low_size_bytes,
                                     },
-                                  ].filter((lod) => lod.triangles).map((lod) => (
-                                    <div key={lod.label} className="rounded-md bg-surface-secondary px-2 py-1.5">
-                                      <dt className="font-bold text-text-secondary">{lod.label}</dt>
+                                  ].filter((variant) => variant.triangles).map((variant) => (
+                                    <div key={variant.label} className="rounded-md bg-surface-secondary px-2 py-1.5">
+                                      <dt className="font-bold text-text-secondary">{variant.label}</dt>
                                       <dd className="text-text-muted">
-                                        {formatNumber(lod.triangles)} segitiga
-                                        {lod.size ? ` · ${formatFileSizeKb(lod.size)}` : ""}
+                                        {formatNumber(variant.triangles)} segitiga
+                                        {variant.size ? ` · ${formatFileSizeKb(variant.size)}` : ""}
                                       </dd>
                                     </div>
                                   ))}
@@ -1003,7 +1002,7 @@ export default function AssetViewModal({
                               )}
                               {model.optimization_error && (
                                 <p className="mt-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300" role="status">
-                                  GLB utama tetap siap. Optimasi LOD belum berhasil: {model.optimization_error}
+                                  GLB utama tetap siap. Optimasi model belum berhasil: {model.optimization_error}
                                 </p>
                               )}
                               {model.conversion_status === "failed" && model.conversion_error && (

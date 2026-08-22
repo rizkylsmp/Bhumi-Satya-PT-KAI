@@ -58,7 +58,6 @@ export const getAsset3dSummary = (asset = {}) => {
       ? HEIGHT_QUALITY_CONFIG[heightData.quality]?.label || heightData.quality
       : "Belum dinilai",
     floors: positiveNumber(asset.building_floors),
-    lod: asset.model_3d_lod || getActiveModels(asset)[0]?.lod || null,
     crs: asset.model_3d_source_crs || null,
     recordedAt: asset.model_3d_recorded_at || null,
     accuracy: positiveNumber(asset.model_3d_accuracy_m),

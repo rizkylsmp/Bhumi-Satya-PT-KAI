@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import {
+  ArrowSquareOutIcon,
   BuildingsIcon,
   CrosshairIcon,
   CubeIcon,
@@ -10,9 +12,34 @@ import {
 } from "@phosphor-icons/react";
 import { hasUsableAsset3dData } from "../../../utils/asset3dGeojson";
 import {
+  getBhumiAtrSearchPayload,
   searchMapRecords,
   splitMapSearchHighlight,
 } from "../../../utils/mapSearch";
+
+const BHUMI_ATR_MAP_URL = "https://bhumi.atrbpn.go.id/peta";
+
+async function copyToClipboard(value) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Continue with the compatibility fallback below.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Clipboard tidak tersedia");
+}
 
 function hasCoordinatePair(latitude, longitude) {
   if (
@@ -83,16 +110,6 @@ function HighlightedText({ text, query }) {
     ) : (
       <span key={`${segment.text}-${index}`}>{segment.text}</span>
     ));
-}
-
-function getAssetLods(asset) {
-  const models = Array.isArray(asset?.active_models_3d)
-    ? asset.active_models_3d
-    : asset?.active_model_3d
-      ? [asset.active_model_3d]
-      : [];
-
-  return [...new Set(models.map((model) => model?.lod).filter(Boolean))].join(", ");
 }
 
 function splitAssetBuildings3d(asset) {
@@ -176,6 +193,27 @@ export default function MapSearchOverlay({
     setIsOpen(false);
   };
 
+  const copyBhumiSearchValue = async (asset) => {
+    const payload = getBhumiAtrSearchPayload(asset);
+    if (!payload) {
+      toast("BHUMI ATR dibuka, tetapi NIB dan koordinat aset belum tersedia", {
+        icon: "⚠️",
+      });
+      return;
+    }
+
+    try {
+      await copyToClipboard(payload.value);
+      toast.success(
+        `${payload.type} disalin. Tempelkan pada pencarian BHUMI ATR.`,
+      );
+    } catch {
+      toast.error(
+        `${payload.type} tersedia, tetapi tidak dapat disalin otomatis.`,
+      );
+    }
+  };
+
   return (
     <>
       <button
@@ -242,7 +280,7 @@ export default function MapSearchOverlay({
                   type="search"
                   value={query}
                   onChange={(event) => updateQuery(event.target.value)}
-                  placeholder="Cari nama, kode, lokasi, status, LOD, atau data lainnya…"
+                  placeholder="Cari nama, kode, lokasi, status, atau data lainnya…"
                   className="h-12 w-full rounded-xl border border-border bg-surface-secondary pl-11 pr-11 text-sm font-semibold text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15 placeholder:font-normal placeholder:text-text-muted [&::-webkit-search-cancel-button]:hidden"
                 />
                 {query && (
@@ -316,7 +354,6 @@ export default function MapSearchOverlay({
               {results.length > 0 ? (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {results.map(({ record: asset, matches }) => {
-                    const lods = searchMode === "3d" ? getAssetLods(asset) : "";
                     const displayName = searchMode === "3d"
                       ? asset.active_model_3d?.building_name
                         || asset.building_name_3d
@@ -325,6 +362,7 @@ export default function MapSearchOverlay({
                     const displayCode = searchMode === "3d"
                       ? asset.kode_3d || asset.active_model_3d?.kode_3d
                       : asset.kode_2d || asset.kode_aset;
+                    const bhumiSearch = getBhumiAtrSearchPayload(asset);
                     return (
                       <article
                         key={`${searchMode}-${asset.id_aset || asset.id}-${asset.kode_3d || asset.active_model_3d?.id_model_3d || "asset"}`}
@@ -357,11 +395,6 @@ export default function MapSearchOverlay({
                               ID {asset.id_aset ?? asset.id ?? "-"}
                             </p>
                           </div>
-                          {lods && (
-                            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-1 text-[8px] font-black uppercase text-violet-700 dark:text-violet-200">
-                              {lods}
-                            </span>
-                          )}
                         </div>
                         <p className="mt-2 line-clamp-2 text-[10px] leading-relaxed text-text-muted">
                           <HighlightedText text={getAssetLocation(asset)} query={query} />
@@ -380,14 +413,32 @@ export default function MapSearchOverlay({
                             ))}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => selectAsset(asset)}
-                          className="mt-auto flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-accent/10 text-[10px] font-black text-accent transition-colors hover:bg-accent hover:text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <CrosshairIcon size={14} weight="bold" />
-                          Lihat di peta
-                        </button>
+                        <div className="mt-auto grid grid-cols-2 gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => selectAsset(asset)}
+                            className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-accent/10 px-2 text-[10px] font-black text-accent transition-colors hover:bg-accent hover:text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none"
+                          >
+                            <CrosshairIcon size={14} weight="bold" />
+                            Lihat di peta
+                          </button>
+                          <a
+                            href={BHUMI_ATR_MAP_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => copyBhumiSearchValue(asset)}
+                            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 text-[10px] font-black text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transition-none dark:text-emerald-300"
+                            aria-label={bhumiSearch
+                              ? `Salin ${bhumiSearch.type} ${displayName || "aset"} dan buka peta BHUMI ATR/BPN pada tab baru`
+                              : `Buka ${displayName || "aset"} di peta BHUMI ATR/BPN pada tab baru`}
+                            title={bhumiSearch
+                              ? `Salin ${bhumiSearch.type} lalu buka BHUMI ATR`
+                              : "Buka BHUMI ATR"}
+                          >
+                            <ArrowSquareOutIcon size={14} weight="bold" />
+                            BHUMI ATR
+                          </a>
+                        </div>
                       </article>
                     );
                   })}

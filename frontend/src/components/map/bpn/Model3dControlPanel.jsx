@@ -18,7 +18,7 @@ import { groupLocationsByArea2d } from "../../../utils/model3dCatalogGroups";
 import ShadowAnalysisPanel from "./ShadowAnalysisPanel";
 
 const TABS = [
-  { id: "data3d", label: "Level of Detail" },
+  { id: "data3d", label: "Model 3D" },
   { id: "data2d", label: "Layer Controls" },
   { id: "tampilan", label: "Navigation" },
   { id: "status", label: "Node Status" },
@@ -32,32 +32,6 @@ const TEAM_MEMBERS = [
   "M. Zaky Fahlevy",
   "Rizky Lanang Sadana Mulyono Putra",
 ];
-
-const LOD_OPTIONS = [
-  { id: "lod1", shortLabel: "LOD 1", label: "LOD 1 – Block Model" },
-  { id: "lod2", shortLabel: "LOD 2", label: "LOD 2 – Roof Detail" },
-  { id: "lod2.5", shortLabel: "LOD 2.5", label: "LOD 2.5 – Facade Detail" },
-  { id: "lod3", shortLabel: "LOD 3", label: "LOD 3 – Detailed Facade" },
-  { id: "lod4", shortLabel: "LOD 4", label: "LOD 4 – Architectural Detail" },
-  { id: "gaussian", shortLabel: "GS", label: "Gaussian Splatting" },
-];
-
-function resolveLodOption(location) {
-  const value = `${location?.lod || ""} ${location?.modelType || ""}`
-    .toLowerCase()
-    .replaceAll("_", ".");
-
-  if (value.includes("gaussian") || value.includes("splat")) return "gaussian";
-  if (value.includes("lod4") || value.includes("lod 4")) return "lod4";
-  if (
-    value.includes("lod2.5")
-    || value.includes("lod 2.5")
-    || value.includes("lod25")
-  ) return "lod2.5";
-  if (value.includes("lod3") || value.includes("lod 3")) return "lod3";
-  if (value.includes("lod2") || value.includes("lod 2")) return "lod2";
-  return "lod1";
-}
 
 function ToolButton({
   icon,
@@ -167,7 +141,6 @@ export default function Model3dControlPanel({
   fallbackStatus,
   locations = [],
   visibleLocationIds = null,
-  onVisibleLocationIdsChange,
   onPerspective,
   onTopView,
   onNorthView,
@@ -185,40 +158,15 @@ export default function Model3dControlPanel({
   onUseCurrentShadowTime,
 }) {
   const [activeTab, setActiveTab] = useState("data3d");
-  const [selectedLod, setSelectedLod] = useState(null);
   const [expandedArea2d, setExpandedArea2d] = useState(undefined);
   const allIds = locations.map((location) => String(location.id));
   const selectedIds = visibleLocationIds === null
     ? allIds
     : visibleLocationIds.map(String).filter((id) => allIds.includes(id));
-  const locationsByLod = Object.fromEntries(
-    LOD_OPTIONS.map((option) => [
-      option.id,
-      locations.filter((location) => resolveLodOption(location) === option.id),
-    ]),
-  );
-  const effectiveSelectedLod = selectedLod
-    || LOD_OPTIONS.find((option) => locationsByLod[option.id].length > 0)?.id
-    || "lod3";
-  const activeLodGroups = groupLocationsByArea2d(
-    locationsByLod[effectiveSelectedLod],
-  );
+  const activeModelGroups = groupLocationsByArea2d(locations);
   const effectiveExpandedArea2d = expandedArea2d === undefined
-    ? activeLodGroups[0]?.key
+    ? activeModelGroups[0]?.key
     : expandedArea2d;
-
-  const updateSelection = (nextIds) => {
-    const normalizedIds = Array.from(new Set(nextIds.map(String)));
-    onVisibleLocationIdsChange?.(normalizedIds);
-  };
-
-  const selectLod = (lodId) => {
-    const matchingIds = locationsByLod[lodId].map((location) => String(location.id));
-    if (!matchingIds.length) return;
-    setSelectedLod(lodId);
-    setExpandedArea2d(undefined);
-    updateSelection(matchingIds);
-  };
 
   const tilesMessage = tilesetStatus.state === "loading"
     ? `Menyiapkan ${tiledModelCount} model detail…`
@@ -292,69 +240,26 @@ export default function Model3dControlPanel({
         )}
 
         {activeTab === "data3d" && (
-          <section id="panel-3d-data3d" role="tabpanel" aria-label="Pilih level of detail" className="space-y-2">
-            <div
-              role="tablist"
-              aria-label="Level of Detail model 3D"
-              className="grid grid-cols-3 gap-1"
-            >
-              {LOD_OPTIONS.map((option) => {
-                const count = locationsByLod[option.id].length;
-                const isActive = effectiveSelectedLod === option.id;
-
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="tab"
-                    onClick={() => selectLod(option.id)}
-                    disabled={count === 0}
-                    aria-selected={isActive}
-                    title={option.label}
-                    className={`inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border px-1.5 text-[8px] font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      isActive
-                        ? "border-accent bg-accent text-surface"
-                        : "border-border bg-surface text-text-secondary hover:bg-surface-tertiary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                    }`}
-                  >
-                    <span>{option.shortLabel}</span>
-                    <span
-                      className={`flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[7px] font-black ${
-                        isActive
-                          ? "bg-surface/20 text-surface"
-                          : "bg-surface-secondary text-text-muted"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
+          <section id="panel-3d-data3d" role="tabpanel" aria-label="Daftar model 3D" className="space-y-2">
             <div className="flex items-center justify-between gap-2 px-0.5">
               <p className="text-[8px] font-black uppercase tracking-[0.1em] text-text-primary">
-                {
-                  LOD_OPTIONS.find(
-                    (option) => option.id === effectiveSelectedLod,
-                  )?.label
-                }
+                Bangunan 3D aktif
               </p>
               <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[7px] font-black text-text-secondary">
-                {locationsByLod[effectiveSelectedLod].length} data
+                {locations.length} data
               </span>
             </div>
 
-            {locationsByLod[effectiveSelectedLod].length === 0 ? (
+            {locations.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-surface px-3 py-5 text-center">
                 <BuildingsIcon size={21} className="mx-auto text-text-muted" />
                 <p className="mt-2 text-[9px] font-bold text-text-muted">
-                  Belum ada data pada level ini.
+                  Belum ada model 3D aktif.
                 </p>
               </div>
             ) : (
               <div className="max-h-60 space-y-1 overflow-y-auto pr-0.5">
-                {activeLodGroups.map((group) => {
+                {activeModelGroups.map((group) => {
                   const isExpanded = effectiveExpandedArea2d === group.key;
                   const visibleCount = group.items.filter((location) =>
                     selectedIds.includes(String(location.id))).length;
@@ -504,7 +409,7 @@ export default function Model3dControlPanel({
                           <p className="truncate text-[11px] font-extrabold text-text-primary" title={location.name}>{location.name}</p>
                           <p className="mt-0.5 flex items-center gap-1 truncate text-[9px] text-text-muted"><MapPinIcon size={10} weight="fill" /> {location.location}</p>
                         </div>
-                        <span className="rounded-md bg-surface-tertiary px-1.5 py-1 text-[8px] font-black text-text-secondary">{location.lod}</span>
+                        <span className="rounded-md bg-surface-tertiary px-1.5 py-1 text-[8px] font-black text-text-secondary">Model 3D</span>
                       </div>
 
                       <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">

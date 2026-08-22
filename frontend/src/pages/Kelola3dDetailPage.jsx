@@ -70,25 +70,6 @@ const ENABLED_DETAIL_SECTIONS = DETAIL_SECTIONS.filter(
   (section) => !section.disabled,
 );
 
-const LOD_OPTIONS = [
-  { value: "LOD1", label: "LOD 1", description: "Block Model" },
-  { value: "LOD2", label: "LOD 2", description: "Roof Detail" },
-  { value: "LOD2.5", label: "LOD 2.5", description: "Facade Detail" },
-  { value: "LOD3", label: "LOD 3", description: "Detailed Facade" },
-  { value: "LOD4", label: "LOD 4", description: "Architectural Detail" },
-  {
-    value: "GAUSSIAN_SPLATTING",
-    label: "Gaussian",
-    description: "Gaussian Splatting",
-  },
-];
-
-const normalizeLod = (value) =>
-  String(value || "LOD1")
-    .trim()
-    .toUpperCase()
-    .replaceAll(" ", "");
-
 const TRANSFORM_KEYS = [
   "altitude_m",
   "heading",
@@ -174,7 +155,6 @@ const asset3dMetadataFromAsset = (asset) => ({
   building_base_elevation_m: asset?.building_base_elevation_m ?? "",
   building_height_source: asset?.building_height_source ?? "",
   building_height_quality: asset?.building_height_quality ?? "",
-  model_3d_lod: asset?.model_3d_lod ?? "",
   model_3d_source_crs: asset?.model_3d_source_crs ?? "",
   model_3d_recorded_at: asset?.model_3d_recorded_at
     ? String(asset.model_3d_recorded_at).slice(0, 10)
@@ -366,7 +346,6 @@ export default function Kelola3dDetailPage() {
   const [asset3dMetadata, setAsset3dMetadata] = useState(() =>
     asset3dMetadataFromAsset(null),
   );
-  const [activeModelLod, setActiveModelLod] = useState("LOD1");
   const [uploading, setUploading] = useState(false);
   const [isDraggingModelFile, setIsDraggingModelFile] = useState(false);
   const [savingAsset3dMetadata, setSavingAsset3dMetadata] = useState(false);
@@ -433,29 +412,6 @@ export default function Kelola3dDetailPage() {
       ),
     [models],
   );
-  const activeModelsByLod = useMemo(
-    () =>
-      activeModels.filter(
-        (model) => normalizeLod(model.lod) === activeModelLod,
-      ),
-    [activeModelLod, activeModels],
-  );
-  const archivedModelsByLod = useMemo(
-    () =>
-      archivedModels.filter(
-        (model) => normalizeLod(model.lod) === activeModelLod,
-      ),
-    [activeModelLod, archivedModels],
-  );
-  const modelCountByLod = useMemo(
-    () =>
-      models.reduce((counts, model) => {
-        const lod = normalizeLod(model.lod);
-        counts[lod] = (counts[lod] || 0) + 1;
-        return counts;
-      }, {}),
-    [models],
-  );
   const selectedModel = useMemo(
     () =>
       activeModels.find(
@@ -466,16 +422,9 @@ export default function Kelola3dDetailPage() {
       null,
     [activeModels, selectedModelId],
   );
-  const selectedModelInActiveLod = useMemo(
-    () =>
-      activeModelsByLod.find(
-        (model) => String(model.id_model_3d) === String(selectedModelId),
-      ) ||
-      activeModelsByLod.find((model) => model.is_active) ||
-      activeModelsByLod[0] ||
-      null,
-    [activeModelsByLod, selectedModelId],
-  );
+  const selectedModelInActiveLod = selectedModel;
+  const activeModelsByLod = activeModels;
+  const archivedModelsByLod = archivedModels;
   const verificationRequirements = useMemo(
     () => [
       {
@@ -740,10 +689,6 @@ export default function Kelola3dDetailPage() {
         available[0] ||
         null;
       setSelectedModelId(nextSelected?.id_model_3d || null);
-      if (nextSelected) {
-        const nextLod = normalizeLod(nextSelected.lod);
-        setActiveModelLod(nextLod);
-      }
       setPreviewRevision((value) => value + 1);
     } catch (error) {
       toast.error(errorMessage(error, "Gagal memuat katalog model 3D"));
@@ -854,7 +799,7 @@ export default function Kelola3dDetailPage() {
     setActivatingModelId(modelId);
     try {
       await assetModel3dService.activate(selectedAssetId, modelId);
-      toast.success(`Versi ${activeModelLod} aktif dan ditampilkan di peta`);
+      toast.success("Versi model aktif dan ditampilkan di peta");
       await fetchModels(selectedAssetId, modelId);
       setActivePreviewTab("map");
       setPreviewRevision((revision) => revision + 1);
@@ -963,13 +908,13 @@ export default function Kelola3dDetailPage() {
       );
       const response = await asetService.update(selectedAssetId, payload);
       toast.success(
-        response.data?.message || "LOD dan metadata bangunan berhasil disimpan",
+        response.data?.message || "Metadata bangunan berhasil disimpan",
       );
       await fetchCatalog();
       setPreviewRevision((value) => value + 1);
     } catch (error) {
       toast.error(
-        errorMessage(error, "Gagal menyimpan LOD dan metadata bangunan"),
+        errorMessage(error, "Gagal menyimpan metadata bangunan"),
       );
     } finally {
       setSavingAsset3dMetadata(false);
@@ -984,7 +929,7 @@ export default function Kelola3dDetailPage() {
       `versi ${model.version}`;
     const confirmed = await confirm({
       title: "Hapus Permanen Model 3D?",
-      message: `Model "${modelName}" akan dihapus permanen beserta file sumber, GLB, LOD turunan, metadata, dan daftar ruang. Tindakan ini tidak dapat dibatalkan.`,
+      message: `Model "${modelName}" akan dihapus permanen beserta file sumber, GLB hasil konversi, metadata, dan daftar ruang. Tindakan ini tidak dapat dibatalkan.`,
       confirmText: "Hapus Permanen",
       type: "danger",
     });
@@ -1042,7 +987,7 @@ export default function Kelola3dDetailPage() {
       `versi ${model.version}`;
     const confirmed = await confirm({
       title: "Hapus Permanen Model 3D?",
-      message: `Model "${modelName}" akan dihapus permanen beserta file sumber, GLB, dan LOD terkait. Tindakan ini tidak dapat dibatalkan.`,
+      message: `Model "${modelName}" akan dihapus permanen beserta file sumber dan GLB hasil konversi. Tindakan ini tidak dapat dibatalkan.`,
       confirmText: "Hapus Permanen",
       type: "danger",
     });
@@ -1177,19 +1122,6 @@ export default function Kelola3dDetailPage() {
     setSelectedModelId(modelId);
     setPreviewRevision((value) => value + 1);
     return true;
-  };
-  const handleModelLodChange = async (lod) => {
-    const normalizedLod = normalizeLod(lod);
-    const lodModels = activeModels.filter(
-      (model) => normalizeLod(model.lod) === normalizedLod,
-    );
-    const nextModel =
-      lodModels.find((model) => model.is_active) || lodModels[0] || null;
-    if (nextModel) {
-      const changed = await handleSelectModel(nextModel.id_model_3d);
-      if (!changed) return;
-    }
-    setActiveModelLod(normalizedLod);
   };
   const discardMetadataChanges = () => {
     setMetadata(metadataFromModel(selectedModel));
@@ -1494,8 +1426,7 @@ export default function Kelola3dDetailPage() {
                       const selected =
                         String(assetId) === String(selectedAssetId);
                       const has3d = Boolean(
-                        asset.active_model_3d ||
-                        asset.model_3d_lod,
+                        asset.active_model_3d,
                       );
                       return (
                         <button
@@ -1682,7 +1613,7 @@ export default function Kelola3dDetailPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-[10px] font-black text-text-primary">
                               {selectedModelInActiveLod
-                                ? `${selectedModelInActiveLod.lod || "LOD1"} · v${selectedModelInActiveLod.version}`
+                                ? `Model versi ${selectedModelInActiveLod.version}`
                                 : "Belum ada model"}
                             </p>
                             {selectedModelInActiveLod?.is_active && (
@@ -1693,7 +1624,7 @@ export default function Kelola3dDetailPage() {
                           </div>
                           <p className="mt-0.5 truncate text-[8px] text-text-muted">
                             {selectedModelInActiveLod
-                              ? `${activeModelsByLod.length} file ${activeModelLod} · ${selectedModelInActiveLod.model_type || "Model 3D"}`
+                              ? `${activeModelsByLod.length} versi file · ${selectedModelInActiveLod.model_type || "Model 3D"}`
                               : "KMZ, GLB, atau ZIP 3D Tiles · maks. 100 MB"}
                           </p>
                         </div>
@@ -1768,55 +1699,11 @@ export default function Kelola3dDetailPage() {
                       </p>
                     )}
 
-                    <div className="rounded-xl border border-violet-200 bg-surface p-2 dark:border-violet-500/30">
-                      <p className="px-1 pb-2 text-[8px] font-extrabold uppercase tracking-[0.12em] text-text-muted">
-                        Kelompok Level of Detail
-                      </p>
-                      <div
-                        role="tablist"
-                        aria-label="Pilih kelompok Level of Detail"
-                        className="flex gap-1.5 overflow-x-auto pb-0.5"
-                      >
-                        {LOD_OPTIONS.map((option) => {
-                          const selected = activeModelLod === option.value;
-                          const count = modelCountByLod[option.value] || 0;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              role="tab"
-                              aria-selected={selected}
-                              onClick={() =>
-                                void handleModelLodChange(option.value)
-                              }
-                              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border px-2.5 text-[9px] font-extrabold transition focus-visible:ring-2 focus-visible:ring-violet-500 ${
-                                selected
-                                  ? "border-violet-600 bg-violet-600 text-white"
-                                  : "border-border bg-surface-secondary text-text-secondary hover:border-violet-300 hover:text-violet-700 dark:hover:text-violet-300"
-                              }`}
-                              title={option.description}
-                            >
-                              <span>{option.label}</span>
-                              <span
-                                className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[8px] font-black ${
-                                  selected
-                                    ? "bg-white/20 text-white"
-                                    : "bg-surface text-text-muted"
-                                }`}
-                              >
-                                {count}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-violet-800 dark:text-violet-300">
-                            Versi file {activeModelLod}
+                            Riwayat versi model
                           </p>
                           <p className="mt-0.5 text-[8px] leading-relaxed text-text-muted">
                             Pilih satu versi aktif yang akan ditampilkan di peta.
@@ -1831,8 +1718,8 @@ export default function Kelola3dDetailPage() {
                       </div>
                       {activeModelsByLod.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-violet-300 bg-surface/70 p-4 text-center text-[10px] text-text-muted dark:border-violet-500/30">
-                          Belum ada file model untuk {activeModelLod}. Pilih
-                          jenis file lalu gunakan tombol Impor File 3D.
+                          Belum ada file model. Gunakan tombol Pilih File 3D
+                          untuk mengimpor model pertama.
                         </div>
                       ) : (
                         activeModelsByLod.map((model) => {
@@ -1883,7 +1770,7 @@ export default function Kelola3dDetailPage() {
                                 <span className="min-w-0 flex-1">
                                   <span className="flex items-center gap-2">
                                     <span className="truncate text-[10px] font-black text-text-primary">
-                                      {model.lod || "LOD1"} · v{model.version} ·{" "}
+                                      Model v{model.version} ·{" "}
                                       {displayedBuildingName}
                                     </span>
                                     {model.is_active && (
@@ -1902,7 +1789,7 @@ export default function Kelola3dDetailPage() {
                                       {model.model_type || "MODEL 3D"}
                                     </span>
                                     <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[8px] font-black text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
-                                      {model.lod || "LOD1"}
+                                      Versi {model.version}
                                     </span>
                                   </span>
                                 </span>
@@ -1914,7 +1801,7 @@ export default function Kelola3dDetailPage() {
                                 >
                                   <span className="inline-flex items-center gap-1.5 text-[8px] font-extrabold">
                                     <CheckCircleIcon size={12} weight="fill" />
-                                    Versi aktif untuk {activeModelLod}
+                                    Versi aktif bangunan
                                   </span>
                                   <span className="text-[7px] font-bold uppercase tracking-wide">
                                     Tampil di peta
@@ -1928,7 +1815,7 @@ export default function Kelola3dDetailPage() {
                                   }
                                   disabled={activatingModelId !== null}
                                   className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-[9px] font-extrabold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-400"
-                                  aria-label={`Tampilkan versi ${model.version} ${activeModelLod} di peta`}
+                                  aria-label={`Tampilkan versi ${model.version} di peta`}
                                 >
                                   {activating ? (
                                     <ArrowsClockwiseIcon
@@ -2009,8 +1896,7 @@ export default function Kelola3dDetailPage() {
                               Arsip model
                             </p>
                             <p className="mt-0.5 text-[8px] text-text-muted">
-                              {archivedModelsByLod.length} versi{" "}
-                              {activeModelLod} dapat dipulihkan
+                              {archivedModelsByLod.length} versi dapat dipulihkan
                               tanpa mengunggah ulang file.
                             </p>
                           </div>
@@ -2029,7 +1915,7 @@ export default function Kelola3dDetailPage() {
                               </span>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-[10px] font-black text-text-primary">
-                                  {model.lod || "LOD1"} · v{model.version} ·{" "}
+                                  Model v{model.version} ·{" "}
                                   {displayedBuildingName}
                                 </p>
                                 <p className="mt-1 text-[8px] font-semibold text-text-muted">
@@ -2106,18 +1992,17 @@ export default function Kelola3dDetailPage() {
                   </div>
 
                   <div
-                    id="kelola3d-panel-lod"
+                    id="kelola3d-panel-metadata"
                     hidden
                     aria-hidden="true"
                   >
                     <div className="rounded-xl border border-border bg-surface-secondary/60 p-3">
                       <p className="text-[10px] font-black text-text-primary">
-                        LOD dan metadata bangunan
+                        Metadata bangunan
                       </p>
                       <p className="mt-1 text-[9px] leading-relaxed text-text-muted">
-                        Setelah model diimpor, pilih tingkat detail yang sesuai,
-                        lengkapi metadata yang diperlukan, lalu aktifkan model
-                        untuk menampilkannya pada peta.
+                        Setelah model diimpor, lengkapi metadata yang diperlukan,
+                        lalu aktifkan versi yang akan ditampilkan pada peta.
                       </p>
                     </div>
 
@@ -2221,36 +2106,6 @@ export default function Kelola3dDetailPage() {
 
                       <label className="block">
                         <span className="mb-1.5 block text-[8px] font-extrabold uppercase tracking-wide text-text-muted">
-                          Level of Detail
-                        </span>
-                        <select
-                          value={asset3dMetadata.model_3d_lod}
-                          disabled={!canUpdate}
-                          onChange={(event) =>
-                            setAsset3dMetadata((current) => ({
-                              ...current,
-                              model_3d_lod: event.target.value,
-                            }))
-                          }
-                          className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-[10px] font-semibold text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          <option value="">Pilih LOD</option>
-                          <option value="LOD1">LOD1 - Blok</option>
-                          <option value="LOD2">LOD2 - Bentuk Atap</option>
-                          <option value="LOD2.5">
-                            LOD2.5 - Detail Fasad
-                          </option>
-                          <option value="LOD3">
-                            LOD3 - Fasad Terperinci
-                          </option>
-                          <option value="LOD4">
-                            LOD4 - Detail Arsitektural
-                          </option>
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-1.5 block text-[8px] font-extrabold uppercase tracking-wide text-text-muted">
                           CRS Sumber
                         </span>
                         <input
@@ -2324,8 +2179,8 @@ export default function Kelola3dDetailPage() {
                           <FloppyDiskIcon size={15} weight="bold" />
                         )}
                         {savingAsset3dMetadata
-                          ? "Menyimpan LOD…"
-                          : "Simpan LOD & Metadata"}
+                          ? "Menyimpan metadata…"
+                          : "Simpan Metadata"}
                       </button>
                     )}
                   </div>
@@ -2456,7 +2311,7 @@ export default function Kelola3dDetailPage() {
                                     key={model.id_model_3d}
                                     value={model.id_model_3d}
                                   >
-                                    {model.lod || "LOD1"} · v{model.version}
+                                    Model versi {model.version}
                                     {model.is_active ? " · Aktif" : ""}
                                     {" · "}
                                     {displayedBuildingName}
@@ -2484,8 +2339,8 @@ export default function Kelola3dDetailPage() {
                               Informasi Dasar
                             </p>
                             <p className="mt-0.5 text-[9px] text-text-muted">
-                              Nama bangunan berlaku untuk seluruh LOD. Deskripsi
-                              tetap mengikuti versi model yang dipilih.
+                              Nama bangunan berlaku untuk seluruh versi. Deskripsi
+                              mengikuti versi model yang dipilih.
                             </p>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2">
@@ -3448,7 +3303,7 @@ export default function Kelola3dDetailPage() {
                 title="Preview Model 3D"
                 description={
                   selectedAsset
-                    ? `${selectedAsset.kode_aset} · ${selectedModel ? `model versi ${selectedModel.version}` : "bangunan LOD"}`
+                    ? `${selectedAsset.kode_aset} · ${selectedModel ? `model versi ${selectedModel.version}` : "bangunan 3D"}`
                     : "Pilih aset untuk melihat preview"
                 }
                 action={
@@ -3536,13 +3391,13 @@ export default function Kelola3dDetailPage() {
                   <div className="relative h-[min(68vh,720px)] min-h-[430px] overflow-hidden rounded-xl border border-border bg-slate-950">
                     {previewAsset ? (
                       <CesiumModelPreview
-                        key={`${selectedAssetId}-${selectedModel?.id_model_3d || "lod"}-${previewRevision}`}
+                        key={`${selectedAssetId}-${selectedModel?.id_model_3d || "model"}-${previewRevision}`}
                         asset={previewAsset}
                         model={previewModel}
                         focusRequestKey={
                           flyToRequest?.assetId === selectedAssetId
                             ? flyToRequest.token
-                            : `kelola-3d-initial-${selectedAssetId}-${selectedModel?.id_model_3d || "lod"}-${previewRevision}`
+                            : `kelola-3d-initial-${selectedAssetId}-${selectedModel?.id_model_3d || "model"}-${previewRevision}`
                         }
                         basemapId={previewBasemap}
                         basemapOption={previewBasemapOptions.find(
@@ -3681,11 +3536,11 @@ export default function Kelola3dDetailPage() {
                     <div className="rounded-lg bg-surface-secondary px-2 py-2 text-center">
                       <p className="text-[9px] font-black text-text-primary">
                         {selectedModel
-                          ? `${selectedModel.model_type || "Model 3D"} · ${selectedModel.lod || "LOD1"}`
+                          ? `${selectedModel.model_type || "Model 3D"} · v${selectedModel.version}`
                           : "—"}
                       </p>
                       <p className="mt-0.5 text-[7px] font-bold uppercase text-text-muted">
-                        Format/LOD
+                        Format/Versi
                       </p>
                     </div>
                     <div className="rounded-lg bg-surface-secondary px-2 py-2 text-center">

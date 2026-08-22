@@ -31,7 +31,6 @@ import { hasPermission } from "../utils/permissions";
 import Pagination from "../components/asset/Pagination";
 import SortableTableHeader from "../components/shared/SortableTableHeader";
 import useColumnResize from "../hooks/useColumnResize";
-import useTableSort from "../hooks/useTableSort";
 import { downloadBuildingPdf } from "../utils/pdfExport";
 
 const errorMessage = (error, fallback) =>
@@ -89,21 +88,22 @@ const CATALOG_COLUMN_WIDTHS = {
   actions: 184,
 };
 
-const getCatalogSortValue = (item, key) => {
-  const values = {
-    nama: item.building_name,
-    lokasi: item.asset?.lokasi || item.asset?.desa_kelurahan,
-    data_bangunan:
-      Number(item.asset?.building_floors || 0) * 1000 +
-      Number(item.asset?.building_height_m || 0),
-    model_status: item.model_status || (item.model_count > 0 ? "ready" : ""),
-    center: Number(item.center_x) || Number(item.center_y) || 0,
-    updated_at: new Date(
-      item.model_updated_at || item.updated_at || item.created_at,
-    ).getTime(),
-  };
-  return key in values ? values[key] : item?.[key];
+const CATALOG_SERVER_SORT = {
+  nama: "building_name",
+  lokasi: "lokasi",
+  data_bangunan: "data_bangunan",
+  model_status: "model_status",
+  center: "center_x",
+  model_url: "model_url",
+  updated_at: "model_updated_at",
 };
+
+const CATALOG_TABLE_SORT = Object.fromEntries(
+  Object.entries(CATALOG_SERVER_SORT).map(([tableKey, serverKey]) => [
+    serverKey,
+    tableKey,
+  ]),
+);
 
 const batchFileId = (file) =>
   `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`;
@@ -528,16 +528,6 @@ export default function Kelola3dPage() {
     resizeColumn,
     resetColumnWidth,
   } = useColumnResize(CATALOG_COLUMN_WIDTHS);
-  const {
-    sortedRows: sortedItems,
-    sortKey: tableSortKey,
-    sortDirection: tableSortDirection,
-    requestSort: requestTableSort,
-  } = useTableSort(items, {
-    initialKey: "updated_at",
-    initialDirection: "desc",
-    getValue: getCatalogSortValue,
-  });
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -554,6 +544,18 @@ export default function Kelola3dPage() {
   }, [input]);
 
   const [sort, order] = useMemo(() => sortValue.split(":"), [sortValue]);
+  const tableSortKey = CATALOG_TABLE_SORT[sort] || sort;
+  const tableSortDirection = order.toLowerCase();
+  const hasNamedSortOption = sortOptions.some(
+    (option) => option.value === sortValue,
+  );
+  const requestTableSort = (key) => {
+    const serverKey = CATALOG_SERVER_SORT[key] || key;
+    const nextOrder = tableSortKey === key && order === "ASC" ? "DESC" : "ASC";
+    setSortValue(`${serverKey}:${nextOrder}`);
+    setPage(1);
+  };
+  const sortedItems = items;
   const fetchCatalog = useCallback(async () => {
     setLoading(true);
     try {
@@ -727,6 +729,7 @@ export default function Kelola3dPage() {
               <input type="search" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Cari kode 3D, nama bangunan, atau lokasi…" className="h-10 w-full rounded-xl border border-border bg-surface-secondary pl-10 pr-3 text-[10px] font-semibold text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15" />
             </label>
             <select value={sortValue} onChange={(event) => { setSortValue(event.target.value); setPage(1); }} className="h-10 rounded-xl border border-border bg-surface-secondary px-3 text-[10px] font-bold text-text-secondary outline-none focus:border-accent focus:ring-2 focus:ring-accent/15">
+              {!hasNamedSortOption && <option value={sortValue}>Urutan kolom aktif ({order === "ASC" ? "naik" : "turun"})</option>}
               {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <button
@@ -835,20 +838,9 @@ export default function Kelola3dPage() {
                     <td className="px-4 py-3"><p className="flex max-w-64 items-center gap-1 truncate text-[9px] text-text-secondary"><MapPinIcon size={10} /> {item.asset?.lokasi || item.asset?.desa_kelurahan || "—"}</p><p className="mt-1 max-w-64 truncate text-[8px] text-text-muted">{item.asset?.opd_pengguna || "OPD belum diisi"}</p></td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
-                        {[...new Set(
-                          (item.active_models || [])
-                            .map((model) => model.lod)
-                            .filter(Boolean),
-                        )].map((lod) => (
-                          <span key={lod} className="rounded-md bg-violet-50 px-2 py-1 text-[8px] font-black text-violet-700 dark:bg-violet-500/10 dark:text-violet-300">
-                            {lod} aktif
-                          </span>
-                        ))}
-                        {(item.active_models || []).length === 0 && (
-                          <span className="rounded-md bg-surface-secondary px-2 py-1 text-[8px] font-bold text-text-muted">
-                            Belum ada LOD aktif
-                          </span>
-                        )}
+                        <span className={`rounded-md px-2 py-1 text-[8px] font-black ${(item.active_models || []).length > 0 ? "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" : "bg-surface-secondary text-text-muted"}`}>
+                          {(item.active_models || []).length > 0 ? "Model aktif" : "Belum ada model aktif"}
+                        </span>
                         <span className="rounded-md bg-surface-secondary px-2 py-1 text-[8px] font-bold text-text-secondary">{item.asset?.building_height_m ? `${item.asset.building_height_m} m` : "Tinggi —"}</span>
                         <span className="rounded-md bg-surface-secondary px-2 py-1 text-[8px] font-bold text-text-secondary">{item.asset?.building_floors ? `${item.asset.building_floors} lantai` : "Lantai —"}</span>
                       </div>

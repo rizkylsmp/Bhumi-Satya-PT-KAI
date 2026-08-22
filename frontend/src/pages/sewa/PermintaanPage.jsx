@@ -25,7 +25,6 @@ import { permintaanService, uploadService } from "../../services/api";
 import Pagination from "../../components/asset/Pagination";
 import SortableTableHeader from "../../components/shared/SortableTableHeader";
 import useColumnResize from "../../hooks/useColumnResize";
-import useTableSort from "../../hooks/useTableSort";
 import toast from "react-hot-toast";
 import RentalCategoryTabs from "../../components/sewa/RentalCategoryTabs";
 
@@ -37,9 +36,6 @@ const REQUEST_COLUMN_WIDTHS = {
   created_at: 150,
   actions: 110,
 };
-
-const getRequestSortValue = (item, key) =>
-  key === "created_at" ? new Date(item.created_at).getTime() : item?.[key];
 
 // Status config
 const STATUS_OPTIONS = [
@@ -543,6 +539,7 @@ export default function PermintaanPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("Tanah");
+  const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -554,22 +551,25 @@ export default function PermintaanPage() {
     resizeColumn,
     resetColumnWidth,
   } = useColumnResize(REQUEST_COLUMN_WIDTHS);
-  const {
-    sortedRows: sortedRequests,
-    sortKey,
-    sortDirection,
-    requestSort,
-  } = useTableSort(data, {
-    initialKey: "created_at",
-    initialDirection: "desc",
-    getValue: getRequestSortValue,
-  });
+  const sortKey = sortBy;
+  const sortDirection = sortOrder;
+  const sortedRequests = data;
+  const requestSort = (key) => {
+    setPage(1);
+    if (sortBy === key) {
+      setSortOrder((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+  };
 
   const fetchData = useCallback(() => {
     setLoading(true);
     const params = {
       page,
       limit,
+      sortBy,
       sortOrder,
       kategori: category,
     };
@@ -587,7 +587,7 @@ export default function PermintaanPage() {
         setPagination({});
       })
       .finally(() => setLoading(false));
-  }, [category, page, limit, debouncedSearch, status, sortOrder]);
+  }, [category, page, limit, debouncedSearch, status, sortBy, sortOrder]);
 
   useEffect(() => {
     // Fetching is the external synchronization performed by this effect.

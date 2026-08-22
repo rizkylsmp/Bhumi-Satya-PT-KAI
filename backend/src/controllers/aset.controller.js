@@ -281,6 +281,12 @@ export const getAll = async (req, res) => {
 
     // Pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    const safeSort = Object.hasOwn(Aset.rawAttributes, sort)
+      ? sort
+      : "created_at";
+    const safeOrder = String(order).toUpperCase() === "ASC" ? "ASC" : "DESC";
+    const assetOrder = [[safeSort, safeOrder]];
+    if (safeSort !== "id_aset") assetOrder.push(["id_aset", safeOrder]);
 
     // Get assets with pagination
     const { count, rows: assets } = await withDbRetry(() =>
@@ -289,7 +295,7 @@ export const getAll = async (req, res) => {
         distinct: true,
         limit: parseInt(limit),
         offset,
-        order: [[sort, order.toUpperCase()]],
+        order: assetOrder,
         include: [
           {
             model: User,
@@ -864,7 +870,6 @@ export const create = async (req, res) => {
       building_floors,
       building_height_source,
       building_height_quality,
-      model_3d_lod,
       model_3d_source_crs,
       model_3d_recorded_at,
       model_3d_accuracy_m,
@@ -902,7 +907,6 @@ export const create = async (req, res) => {
       building_floors,
       building_height_source,
       building_height_quality,
-      model_3d_lod,
       model_3d_source_crs,
       model_3d_recorded_at,
       model_3d_accuracy_m,

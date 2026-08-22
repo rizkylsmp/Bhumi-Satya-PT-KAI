@@ -50,14 +50,16 @@ export default function useTableSort(
     initialKey = null,
     initialDirection = "asc",
     getValue = (row, key) => row?.[key],
+    manual = false,
   } = {},
 ) {
   const [sortKey, setSortKey] = useState(initialKey);
   const [sortDirection, setSortDirection] = useState(initialDirection);
 
   const sortedRows = useMemo(() => {
+    if (manual) return rows;
     return sortTableRows(rows, sortKey, sortDirection, getValue);
-  }, [getValue, rows, sortDirection, sortKey]);
+  }, [getValue, manual, rows, sortDirection, sortKey]);
 
   const requestSort = (key) => {
     if (sortKey === key) {

@@ -55,7 +55,6 @@ const asset3dManagementFields = [
   "building_floors",
   "building_height_source",
   "building_height_quality",
-  "model_3d_lod",
   "model_3d_source_crs",
   "model_3d_recorded_at",
   "model_3d_accuracy_m",

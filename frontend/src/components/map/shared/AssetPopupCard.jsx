@@ -149,7 +149,6 @@ function AccordionSection({
 function ModelDetails({ model, statusLabel }) {
   const rows = [
     { label: "Nama Bangunan", value: model.name },
-    { label: "LOD", value: model.lod },
     {
       label: "Versi",
       value: hasPopupValue(model.version) ? `v${model.version}` : null,
@@ -298,7 +297,7 @@ export default function AssetPopupCard({
       icon: CubeIcon,
       title: "Data Model 3D",
       summary:
-        [popup.model.lod, popup.model.format]
+        [popup.model.format, hasPopupValue(popup.model.version) ? `v${popup.model.version}` : null]
           .filter(hasPopupValue)
           .join(" · ") || "Belum lengkap",
       visible: false,

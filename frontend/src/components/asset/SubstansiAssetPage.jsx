@@ -270,6 +270,8 @@ export default function SubstansiAssetPage({
       const params = {
         page: currentPage,
         limit: itemsPerPage,
+        sort: sortBy,
+        order: sortOrder,
         ...(searchTerm && { search: searchTerm }),
         ...filters,
       };
@@ -290,7 +292,7 @@ export default function SubstansiAssetPage({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filters, itemsPerPage]);
+  }, [currentPage, searchTerm, filters, itemsPerPage, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchAssets();
@@ -320,6 +322,7 @@ export default function SubstansiAssetPage({
   }, []);
 
   const handleSort = (column) => {
+    setCurrentPage(1);
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -335,19 +338,8 @@ export default function SubstansiAssetPage({
     navigate(`/aset/${assetId}/kelola${query}`);
   };
 
-  // ==================== SORTED DATA ====================
-
-  const sortedAssets = [...assets].sort((a, b) => {
-    let aVal = a[sortBy];
-    let bVal = b[sortBy];
-    const col = columns.find((c) => c.key === sortBy);
-    if (col?.type === "area" || col?.type === "currency") {
-      aVal = parseFloat(aVal) || 0;
-      bVal = parseFloat(bVal) || 0;
-    }
-    if (sortOrder === "asc") return aVal > bVal ? 1 : -1;
-    return aVal < bVal ? 1 : -1;
-  });
+  // Sorting is applied by the API before pagination.
+  const sortedAssets = assets;
 
   // ==================== TABLE HEADER ====================
 
